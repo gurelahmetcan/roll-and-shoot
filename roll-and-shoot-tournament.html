@@ -13,7 +13,7 @@
   header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
   .logo{font-family:Impact,"Haettenschweiler","Arial Narrow Bold",sans-serif;font-size:clamp(28px,6vw,50px);line-height:.86;
     letter-spacing:.5px;text-transform:uppercase;text-shadow:3px 3px 0 var(--pink),6px 6px 0 var(--blue);transform:skewX(-5deg);}
-  .logo small{display:block;font-size:.28em;letter-spacing:3px;text-shadow:none;color:var(--yellow);transform:skewX(5deg);margin-top:6px;}
+  .logo small{display:block;font-size:.28em;letter-spacing:3px;text-shadow:none;color:var(--yellow);transform:skewX(5deg);margin-top:15px;}
   .scorebox{font-family:Impact,sans-serif;text-transform:uppercase;background:var(--paper);color:var(--ink);border:3px solid var(--ink);
     box-shadow:5px 5px 0 var(--pink);padding:8px 14px;text-align:center;transform:skewX(-5deg);}
   .scorebox b{display:block;font-size:28px;line-height:1;transform:skewX(5deg);}
@@ -192,8 +192,8 @@
   #homeScreen{padding:8px 0 20px;}
   .home-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center;margin-bottom:34px;}
   @media(max-width:760px){.home-hero{grid-template-columns:1fr;}}
-  .home-score{font-family:Impact,"Haettenschweiler",sans-serif;font-size:clamp(56px,11vw,108px);line-height:.82;letter-spacing:1px;
-    text-transform:uppercase;text-align:center;transform:skewX(-5deg);margin-bottom:4px;}
+  .home-score{font-family:Impact,"Haettenschweiler",sans-serif;font-size:clamp(56px,11vw,90px);line-height:1;letter-spacing:1px;
+    text-transform:uppercase;text-align:center;transform:skewX(-5deg);margin-bottom:10px;}
   .home-score span{display:block;}
   .home-score .s7{color:var(--yellow);text-shadow:5px 5px 0 var(--pink),10px 10px 0 var(--blue);}
   .home-score .s0{color:var(--paper);text-shadow:5px 5px 0 var(--blue);}
@@ -231,7 +231,7 @@
   <div id="homeScreen">
     <div class="home-hero">
       <div>
-        <div class="home-score"><span class="s7">ROLL</span><span class="s0">&amp;SHOOT</span></div>
+        <div class="home-score"><span class="s7">ROLL</span><span class="s0">&amp;</span><span class="s0">SHOOT</span></div>
         <span class="home-tag">Build · Match · Win</span>
       </div>
       <div class="home-copy">
@@ -255,7 +255,7 @@
   </div>
 
   <header id="appHeader" class="hide">
-    <div class="logo">Roll &amp; Shoot<small>BUILD · MATCH · PROTOTYPE</small></div>
+    <div class="logo">Roll &amp; Shoot<small>BUILD · SHOOT · WIN</small></div>
     <div class="scorebox" id="scorebox" style="display:none"><b id="scored">0</b><span id="scoreLbl">You – Opp</span></div>
   </header>
 
@@ -337,7 +337,7 @@
   <div class="card" id="elimScreen" style="display:none">
     <div class="endcard">
       <div class="trophy">💥</div>
-      <div class="big" style="text-shadow:3px 3px 0 var(--ink),6px 6px 0 var(--pink)">ELIMINATED</div>
+      <div class="big" style="color:var(--pink);text-shadow:3px 3px 0 var(--ink),6px 6px 0 var(--blue)">ELIMINATED</div>
       <div class="sub" id="elimSub">Knocked out.</div>
       <div class="reslist" id="elimRun" style="margin-bottom:18px"></div>
       <div id="elimTopScorer"></div>
@@ -904,17 +904,34 @@
   function updateScorebox(){el('scored').textContent=screen==='shootout'?(yourScore+' – '+oppScore):pracGoals;}
 
   // ===== BUILD =====
-  let rolled=null,rolling=false,keeperOptions=null;
+  let rolled=null,rolling=false,keeperOptions=null,chosenFlag=null,flagPhase=false,flagRolled=false;
   const MAX_REROLLS=4;let rerollsLeft=MAX_REROLLS;
   function updateRollBtn(){
     if(rolling)return;const b=el('rollBtn');
-    if(lineup.length>=5){b.disabled=false;b.textContent='🎲 ROLL KEEPERS';return;}
+    const hasRerolls=rerollsLeft>0;
+    if(flagPhase){
+      if(!flagRolled){b.disabled=false;b.textContent='🎲 ROLL FLAGS';return;}
+      if(hasRerolls){b.disabled=false;b.textContent='🎲 REROLL ('+rerollsLeft+' LEFT)';}
+      else{b.disabled=true;b.textContent='👇 PICK A FLAG';}
+      return;
+    }
+    if(lineup.length>=5){
+      if(!keeperOptions){b.disabled=false;b.textContent='🎲 ROLL KEEPERS';return;}
+      if(hasRerolls){b.disabled=false;b.textContent='🎲 REROLL ('+rerollsLeft+' LEFT)';}
+      else{b.disabled=true;b.textContent='👇 PICK A KEEPER';}
+      return;
+    }
     if(rolled){
-      if(rerollsLeft>0){b.disabled=false;b.textContent='🎲 REROLL ('+rerollsLeft+' LEFT)';}
+      if(hasRerolls){b.disabled=false;b.textContent='🎲 REROLL ('+rerollsLeft+' LEFT)';}
       else{b.disabled=true;b.textContent='👇 PICK A PLAYER';}
     }else{b.disabled=false;b.textContent='🎲 ROLL';}
   }
-  function renderProg(){el('prog').textContent=lineup.length<5?('SHOOTER '+(lineup.length+1)+' / 5'):(!chosenKeeper?'KEEPER — PICK 1 OF 3':'SQUAD COMPLETE');}
+  function renderProg(){
+    if(lineup.length<5) el('prog').textContent='SHOOTER '+(lineup.length+1)+' / 5';
+    else if(!chosenKeeper) el('prog').textContent='KEEPER — PICK 1 OF 3';
+    else if(!chosenFlag) el('prog').textContent='FLAG — PICK 1 OF 3';
+    else el('prog').textContent='SQUAD COMPLETE';
+  }
   function renderDraft(){const row=el('draftrow');row.innerHTML='';
     for(let i=0;i<5;i++){const d=lineup[i];const div=document.createElement('div');div.className='slot'+(d?'':' empty');
       if(d)div.innerHTML=`<div class="si">${i+1} · ${d.code} ${d.year}</div><div class="sn">${d.player.n}</div><div class="sc">P${d.player.p} T${d.player.t} C${d.player.c}</div>`;
@@ -922,7 +939,8 @@
     const gk=el('gkSlot');
     if(chosenKeeper){gk.className='slot gk';gk.innerHTML=`<div class="si">GK · ${chosenKeeper.code} ${chosenKeeper.year}</div><div class="sn">${chosenKeeper.keeper.n}</div><div class="sc">RATING ${chosenKeeper.keeper.rating}</div>`;}
     else{gk.className='slot gk empty';gk.innerHTML=`<div class="si">GK</div><div class="sn" style="opacity:.4">—</div>`;}
-    const done=lineup.length>=5&&chosenKeeper;show(el('startBtn'),done);el('rollBtn').classList.toggle('hide',done);}
+    const done=lineup.length>=5&&chosenKeeper&&chosenFlag;
+    show(el('startBtn'),done);el('rollBtn').classList.toggle('hide',done);}
   function renderRevealTakers(sq){const r=el('reveal');
     r.innerHTML=`<div class="squadhead"><span class="flag" style="${flagStyle(sq.code,sq.col)}"></span><span class="code">${sq.code}</span><span class="yr">'${String(sq.year).slice(2)}</span></div><div class="takers" id="takers"></div>`;
     const shuffled=[...sq.takers].sort(()=>Math.random()-.5).slice(0,3);
@@ -934,18 +952,43 @@
     const t=el('takers');three.forEach(sq=>{const k=sq.keeper;const b=document.createElement('button');b.className='taker';
       b.innerHTML=`<div class="gk"><span class="flag" style="${flagStyle(sq.code,sq.col)}"></span>${sq.code} '${String(sq.year).slice(2)}</div><div class="nm">${k.n}</div><div class="chips"><span class="chip rh">RATING ${k.rating}</span></div>`;
       b.onclick=()=>draftKeeper(sq);t.appendChild(b);});}
+  function pickFlagThree(){
+    // Pool: all SQUADS + ghost teams, deduplicate by code so each nation appears once
+    const all=[...SQUADS];const seen=new Set();const pool=[];
+    for(const s of all){if(!seen.has(s.code)){seen.add(s.code);pool.push(s);}}
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+    return pool.slice(0,3);
+  }
+  function renderRevealFlags(three){const r=el('reveal');
+    r.innerHTML=`<div class="squadhead"><span class="code" style="color:var(--green,#3e9b4f)">PICK YOUR FLAG</span></div><div class="takers" id="takers"></div>`;
+    const t=el('takers');three.forEach(sq=>{const b=document.createElement('button');b.className='taker';
+      b.innerHTML=`<div class="gk" style="gap:10px"><span class="flag" style="${flagStyle(sq.code,sq.col)};width:34px;height:34px"></span><span style="font-size:1.15em">${sq.code}</span></div>`;
+      b.onclick=()=>draftFlag(sq);t.appendChild(b);});}
   function pickSquad(){const used=new Set(lineup.map(d=>d.code+d.year));let pool=SQUADS.filter(s=>!used.has(s.code+s.year));if(!pool.length)pool=SQUADS;return pool[Math.floor(Math.random()*pool.length)];}
   function pickThree(){const arr=[...SQUADS];for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr.slice(0,3);}
-  function doRoll(){if(rolling)return;const keeperPhase=lineup.length>=5;if(keeperPhase&&chosenKeeper)return;
-    if(!keeperPhase&&rolled){if(rerollsLeft<=0)return;rerollsLeft--;}
+  function doRoll(){if(rolling)return;
+    if(flagPhase){rollFlags();return;}
+    const keeperPhase=lineup.length>=5;if(keeperPhase&&chosenKeeper)return;
+    // deduct a reroll if this isn't the first roll of this phase
+    if(rolled){if(rerollsLeft<=0)return;rerollsLeft--;}
+    if(keeperPhase&&keeperOptions){if(rerollsLeft<=0)return;rerollsLeft--;}
     rolling=true;el('rollBtn').disabled=true;if(ac().state==='suspended')ac().resume();
     if(!keeperPhase){const final=pickSquad();let n=0;const iv=setInterval(()=>{renderRevealTakers(SQUADS[Math.floor(Math.random()*SQUADS.length)]);tone(400+Math.random()*300,.04,'square',.08);
       if(++n>=11){clearInterval(iv);renderRevealTakers(final);rolled=final;rolling=false;updateRollBtn();sfxKick();}},65);}
     else{let n=0;const iv=setInterval(()=>{renderRevealKeepers(pickThree());tone(400+Math.random()*300,.04,'square',.08);
-      if(++n>=11){clearInterval(iv);keeperOptions=pickThree();renderRevealKeepers(keeperOptions);rolling=false;el('rollBtn').disabled=false;sfxKick();}},65);}}
+      if(++n>=11){clearInterval(iv);keeperOptions=pickThree();renderRevealKeepers(keeperOptions);rolling=false;updateRollBtn();sfxKick();}},65);}}
+  function rollFlags(){
+    if(flagRolled){if(rerollsLeft<=0)return;rerollsLeft--;}
+    rolling=true;flagRolled=true;el('rollBtn').disabled=true;if(ac().state==='suspended')ac().resume();
+    let n=0;const iv=setInterval(()=>{renderRevealFlags(pickFlagThree());tone(400+Math.random()*300,.04,'square',.08);
+      if(++n>=11){clearInterval(iv);renderRevealFlags(pickFlagThree());rolling=false;updateRollBtn();sfxKick();}},65);}
   function draftTaker(sq,pl){lineup.push({code:sq.code,year:sq.year,col:sq.col,player:pl});rolled=null;el('reveal').innerHTML='';renderProg();renderDraft();tone(660,.12,'triangle',.18,880);
     updateRollBtn();}
-  function draftKeeper(sq){chosenKeeper={code:sq.code,year:sq.year,col:sq.col,keeper:sq.keeper};el('reveal').innerHTML='';renderProg();renderDraft();tone(740,.14,'triangle',.18,990);}
+  function draftKeeper(sq){chosenKeeper={code:sq.code,year:sq.year,col:sq.col,keeper:sq.keeper};el('reveal').innerHTML='';
+    // Enter flag phase
+    flagPhase=true;renderProg();renderDraft();updateRollBtn();
+    tone(740,.14,'triangle',.18,990);}
+  function draftFlag(sq){chosenFlag={code:sq.code,year:sq.year,col:sq.col};flagPhase=false;el('reveal').innerHTML='';renderProg();renderDraft();tone(880,.14,'triangle',.18,1100);}
   el('rollBtn').onclick=doRoll;el('startBtn').onclick=startShootout;
 
   // ===== GHOST TEAMS (real 2026 WC nations, bracket filler — AI only, never played live) =====
@@ -995,10 +1038,8 @@
   let tournament=null;
   const LETTERS=['A','B','C','D','E','F','G','H'];
   function youTeam(){ // the player's drafted identity for bracket display
-    return {code:(chosenKeeper?chosenKeeper.code:lineup[0].code),
-            year:(chosenKeeper?chosenKeeper.year:lineup[0].year),
-            col:(chosenKeeper?chosenKeeper.col:lineup[0].col),
-            you:true};
+    const f=chosenFlag||chosenKeeper||lineup[0];
+    return {code:f.code, year:f.year, col:f.col, you:true};
   }
   function buildPool(){ // 16 real squads + 16 ghosts, minus the era the player most identifies with isn't excluded (cross-era ok)
     const reals=SQUADS.map(s=>s); const ghosts=GHOSTS_RAW.map(mkGhost);
@@ -1461,7 +1502,7 @@
   // ===== TOURNAMENT NAV BUTTONS =====
   el('toBracketBtn').onclick=()=>{ enterBracket(); };
   function resetToBuild(){
-    lineup=[];chosenKeeper=null;opponent=null;rolled=null;tournament=null;rerollsLeft=MAX_REROLLS;
+    lineup=[];chosenKeeper=null;chosenFlag=null;flagPhase=false;flagRolled=false;keeperOptions=null;opponent=null;rolled=null;tournament=null;rerollsLeft=MAX_REROLLS;
     el('reveal').innerHTML='';el('rollBtn').textContent='🎲 ROLL';el('rollBtn').classList.remove('hide');
     renderProg();renderDraft();setScreen('build');
   }
@@ -1488,7 +1529,10 @@
   }
   async function buildShareCard(){
     const {gf,ga,wins,run}=runStats();const you=tournament.you;
-    const rowH=78,listTop=700;
+    // top scorer
+    const sc=tournament.scorers;const scEntries=Object.entries(sc);scEntries.sort((a,b)=>b[1]-a[1]);
+    const topScorerName=scEntries.length?scEntries[0][0]:'';const topScorerGoals=scEntries.length?scEntries[0][1]:0;
+    const rowH=78,listTop=topScorerName?830:760;
     const W=1080,H=listTop+run.length*(rowH+12)+150,cv=document.createElement('canvas');cv.width=W;cv.height=H;
     const ctx=cv.getContext('2d');
     const INK='#15110d',PAPER='#f0e9d6',PINK='#ff2e63',BLUE='#2b50e2',YELLOW='#ffc42e',GREEN='#3e9b4f';
@@ -1500,21 +1544,35 @@
     ctx.fillStyle=INK;ctx.fillRect(0,0,W,H);
     ctx.lineWidth=14;ctx.strokeStyle=YELLOW;ctx.strokeRect(28,28,W-56,H-56);
     const M=90;
-    // header
+    // header — measure ROLL then place &SHOOT flush with a small gap
     ctx.textBaseline='alphabetic';
     ctx.font='italic 700 64px Impact, sans-serif';ctx.fillStyle=YELLOW;ctx.textAlign='left';
-    ctx.fillText('ROLL',M,150);ctx.fillStyle=PAPER;ctx.fillText('&SHOOT',M+185,150);
+    ctx.fillText('ROLL',M,150);
+    const rollW=ctx.measureText('ROLL').width;
+    ctx.fillStyle=PAPER;ctx.fillText('&SHOOT',M+rollW,150);
     ctx.font='600 30px "Helvetica Neue", Arial, sans-serif';ctx.fillStyle=GREEN;ctx.textAlign='right';
-    ctx.fillText('build yours',W-M,150);
+    ctx.fillText('build your own team',W-M,150);
     ctx.strokeStyle=GREEN;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(M,178);ctx.lineTo(W-M,178);ctx.stroke();
     // result title
     ctx.textAlign='center';
     ctx.font='700 120px Impact, sans-serif';ctx.fillStyle=YELLOW;
     ctx.fillText(win?'CHAMPIONS':'ELIMINATED',W/2,310);
-    ctx.font='700 84px Impact, sans-serif';ctx.fillStyle=PAPER;
-    ctx.fillText(win?`${you.code} '${String(you.year).slice(2)}`:`${wins} WIN${wins===1?'':'S'}`,W/2,410);
+    // team name row with flag
+    const teamLabel=win?`${you.code} '${String(you.year).slice(2)}`:`${wins} WIN${wins===1?'':'S'}`;
+    ctx.font='700 84px Impact, sans-serif';
+    const teamLabelW=ctx.measureText(teamLabel).width;
+    const flagD=64;const gap=20;
+    const teamTotalW=(win?flagD+gap:0)+teamLabelW;
+    const teamStartX=W/2-teamTotalW/2;
+    if(win){
+      const flagTopY=410-Math.round(84*0.72);
+      drawFlagCircle(ctx,you.code,you.col,teamStartX,flagTopY,flagD,imgMap);
+      ctx.fillStyle=PAPER;ctx.textAlign='left';ctx.fillText(teamLabel,teamStartX+flagD+gap,410);
+    }else{
+      ctx.fillStyle=PAPER;ctx.textAlign='center';ctx.fillText(teamLabel,W/2,410);
+    }
     // stat boxes
-    const stats=[['GOALS FOR',gf,GREEN],['AGAINST',ga,PINK],['WINS',wins,YELLOW]];
+    const stats=[['SCORED',gf,GREEN],['CONCEDED',ga,PINK],['WINS',wins,YELLOW]];
     const bw=(W-2*M-2*24)/3,by=470,bh=180;
     stats.forEach((s,i)=>{const bx=M+i*(bw+24);
       ctx.strokeStyle='#2d3b2a';ctx.lineWidth=3;ctx.strokeRect(bx,by,bw,bh);
@@ -1523,6 +1581,17 @@
       ctx.fillStyle=PAPER;ctx.font='600 24px "Helvetica Neue", Arial, sans-serif';
       ctx.fillText(s[0],bx+bw/2,by+140);
     });
+    // top scorer row
+    if(topScorerName){
+      const tsY=690,tsH=70;
+      ctx.strokeStyle=YELLOW;ctx.lineWidth=3;ctx.strokeRect(M,tsY,W-2*M,tsH);
+      ctx.fillStyle=YELLOW;ctx.font='700 28px Impact, sans-serif';ctx.textAlign='left';
+      ctx.fillText('⚽ TOP SCORER',M+22,tsY+tsH/2+10);
+      ctx.fillStyle=PAPER;ctx.font='700 30px Impact, sans-serif';ctx.textAlign='center';
+      ctx.fillText(topScorerName,W/2,tsY+tsH/2+10);
+      ctx.fillStyle=GREEN;ctx.font='700 28px Impact, sans-serif';ctx.textAlign='right';
+      ctx.fillText(`${topScorerGoals} goal${topScorerGoals===1?'':'s'}`,W-M-22,tsY+tsH/2+10);
+    }
     // run list
     let y=listTop;const fd=46;
     run.forEach(r=>{
@@ -1538,7 +1607,7 @@
     });
     // footer
     ctx.fillStyle=GREEN;ctx.font='600 30px "Helvetica Neue", Arial, sans-serif';ctx.textAlign='center';
-    ctx.fillText('roll & shoot · build yours', W/2, H-70);
+    ctx.fillText('roll & shoot · build your own team', W/2, H-70);
     return cv;
   }
   function shareText(){
@@ -1548,20 +1617,40 @@
       ? `I won the World Cup with ${you.code} '${String(you.year).slice(2)} in ROLL & SHOOT! ${wins} wins, ${gf} goals scored. Build yours.`
       : `Knocked out in ROLL & SHOOT — ${wins} win${wins===1?'':'s'}, ${gf} for / ${ga} against. Build yours.`;
   }
+  let _sharingImage=false;
+  function renderShareBlob(){
+    return buildShareCard().then(cv=>new Promise(res=>cv.toBlob(res,'image/png')));
+  }
   async function doShareImage(btn){
-    if(!tournament)return;const orig=btn.textContent;btn.disabled=true;btn.textContent='RENDERING…';
+    if(!tournament||_sharingImage)return;
+    _sharingImage=true;const orig=btn.textContent;btn.disabled=true;
+    const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // On desktop: copy directly to clipboard (avoids macOS share sheet double-paste bug).
+    // Safari requires clipboard.write to be called synchronously within the user gesture,
+    // so we pass a Promise<Blob> to ClipboardItem rather than awaiting the render first.
+    if(!isMobile&&navigator.clipboard&&window.ClipboardItem){
+      try{
+        await navigator.clipboard.write([new ClipboardItem({'image/png':renderShareBlob()})]);
+        btn.textContent='✓ COPIED';setTimeout(()=>{btn.textContent=orig;},1800);
+      }catch(e){
+        console.error(e);
+        // fallback: download
+        try{const blob=await renderShareBlob();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='roll-and-shoot.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);btn.textContent=orig;}catch(e2){console.error(e2);btn.textContent=orig;}
+      }
+      btn.disabled=false;_sharingImage=false;return;
+    }
+    btn.textContent='RENDERING…';
     try{
-      const cv=await buildShareCard();
-      const blob=await new Promise(res=>cv.toBlob(res,'image/png'));
+      const blob=await renderShareBlob();
       const file=new File([blob],'roll-and-shoot.png',{type:'image/png'});
       if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],text:shareText()});
+        try{await navigator.share({files:[file],text:shareText()});}catch(e){if(e.name!=='AbortError')console.error(e);}
       }else{
         const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='roll-and-shoot.png';a.click();
         setTimeout(()=>URL.revokeObjectURL(a.href),4000);
       }
     }catch(e){console.error(e);}
-    btn.disabled=false;btn.textContent=orig;
+    btn.disabled=false;btn.textContent=orig;_sharingImage=false;
   }
   async function doShare(btn){
     if(!tournament)return;const txt=shareText();
