@@ -292,7 +292,7 @@
       <div class="stat com"><div class="row"><span>Composure</span><span class="v" id="vCom">7</span></div><div class="desc">Slower, steadier meters.</div><input type="range" id="sCom" min="1" max="10" value="7"></div>
     </div>
     <div class="toggle"><button id="pressBtn">Pressure: Off</button><div class="lab">Knockout pressure — bar speeds up &amp; sweet-spots shrink.</div></div>
-    <div class="hint"><b>Attack:</b> tap the bar / <kbd>Space</kbd> to lock aim ◄►, aim ▼▲, power, curve.</div>
+    <div class="hint"><b>Attack:</b> tap the bar / <kbd>Space</kbd> to lock aim ◄►, aim ▼▲, power — then click <b>where on the ball</b> you strike: sides bend it the other way, under = chip / Panenka, top = driven low.</div>
   </div>
 
   <div class="card" id="summaryScreen" style="display:none">
@@ -510,6 +510,7 @@
   const KEEPER_SPRITE_H=140, KEEPER_FOOT=0.60;             // 2.8 × 50 — same sprite for every keeper; circle sits 0.60 up from the feet
   const KEEPER_REST_Y=GOAL.bot-KEEPER_SPRITE_H*KEEPER_FOOT;   // rest centre so the feet land on the goal line
   const SPOT={x:490,y:470};const BAR={x:250,y:46,w:480,h:34};
+  const BALL_R=44;let curveHoverX=null,curveHoverY=null;   // curve phase: contact-on-ball picker radius + last hover offset (x=bend, y=lift)
   const SWEEP=1.35;   // global meter speed → higher = faster sweep = harder
   // ---- character sprites (uploaded SVGs) ----
   const SPR_SRC={"ball": "assets/football.png",
@@ -525,7 +526,7 @@
 
   const stats={pow:7,acc:7,tec:7,com:7};let pressure=false,pressureChosen=false;
   let screen='build',subMode='attack',phase='idle';
-  const shot={aimX:0,aimY:.5,power:.6,curve:0};const sweep={val:0,dir:1,speed:.9};
+  const shot={aimX:0,aimY:.5,power:.6,curve:0,strikeY:0};const sweep={val:0,dir:1,speed:.9};
   let keeper=mkKeeper();let ball=null,result=null,resText='',resCol='#ffc42e',shake=0,flash=0,resultTimer=0;const nets=[];
   function mkKeeper(){return{t:0,committed:false,sx:490,sy:KEEPER_REST_Y,cx:490,cy:KEEPER_REST_Y,r:70,rating:7};}
   // catch radius from keeper stats — kept only for the debug-circle overlay now; real saves use pixel-perfect below
@@ -589,7 +590,7 @@
   function sweetHalf(sn){let h=0.12+0.16*sn;if(pressure)h*=(0.55+0.25*norm(stats.com));return h;}
 
   // ---- ATTACK ----
-  function beginKick(){subMode='attack';phase='aimX';shot.aimX=0;shot.aimY=.5;shot.power=.6;shot.curve=0;
+  function beginKick(){subMode='attack';phase='aimX';shot.aimX=0;shot.aimY=.5;shot.power=.6;shot.curve=0;shot.strikeY=0;
     sweep.val=0;sweep.dir=1;sweep.speed=meterSpeed(.95);keeper=mkKeeper();keeper.r=keeperRadius(oppKeeper||{rating:7});keeper.rating=(oppKeeper||{rating:7}).rating||7;ball=null;result=null;}
   function lock(){
     if(phase==='idle'){beginKick();return;}
@@ -597,9 +598,26 @@
     if(phase==='aimX'){shot.aimX=aimXfrom(sweep.val);phase='aimY';sweep.val=0;sweep.dir=1;sweep.speed=meterSpeed(.9);}
     else if(phase==='aimY'){shot.aimY=aimYfrom(sweep.val);
       phase='power';sweep.val=0;sweep.dir=1;sweep.speed=meterSpeed(0.95);}
-    else if(phase==='power'){shot.power=sweep.val;phase='curve';sweep.val=.5;sweep.dir=1;sweep.speed=meterSpeed(1.15);}
-    else if(phase==='curve'){let c=sweep.val*2-1;c+=(Math.random()*2-1)*(1-norm(stats.tec))*0.5;
-      shot.curve=Math.max(-1.3,Math.min(1.3,c));launchAttack();}
+    else if(phase==='power'){shot.power=sweep.val;phase='curve';curveHoverX=null;curveHoverY=null;}
+    else if(phase==='curve'){strikeBall(0,0);} // Space / field tap = clean centre strike (straight, no chip)
+  }
+  // Contact point on the ball → shot shape. Real physics:
+  //  • hit the RIGHT side → ball bends LEFT (and vice-versa)  [offX]
+  //  • hit UNDER the ball → chip: slow + lofted (Panenka when central & low power)  [offY > 0]
+  //  • hit the TOP → driven low, keeps pace  [offY < 0]
+  // offX/offY in [-1,1]; centre of ball = clean straight shot.
+  function strikeBall(offX,offY){
+    shot.curve=Math.max(-1.3,Math.min(1.3,-offX*1.18));
+    shot.strikeY=Math.max(-1,Math.min(1,offY));
+    curveHoverX=null;curveHoverY=null;launchAttack();
+  }
+  // map a pointer event on the meter canvas to a contact offset {x,y} in [-1,1] across the ball
+  function meterContactOffset(e){
+    const rect=mv.getBoundingClientRect();
+    const px=(e.clientX-rect.left)*(MW/rect.width);
+    const py=(e.clientY-rect.top)*(MH/rect.height);
+    return {x:Math.max(-1,Math.min(1,(px-MW/2)/BALL_R)),
+            y:Math.max(-1,Math.min(1,(py-MH/2)/BALL_R))};
   }
   function launchAttack(){phase='flight';sfxKick();
     const ok=oppKeeper||{rating:7};
@@ -614,8 +632,12 @@
     keeper.cx=Math.max(GOAL.l+12,Math.min(GOAL.r-12,kp.x));
     keeper.cy=Math.max(GOAL.top+12,Math.min(GOAL.bot-12,kp.y));
     // POWER → ball speed, scaled by the striker's Power stat. A fast enough shot reaches the corner before the keeper.
-    const pace=0.28+shot.power*(0.6+0.07*(stats.pow-1));
-    ball={t:0,dur:0.74/(0.6+pace),tx:shot.aimX,ty:shot.aimY,curve:shot.curve*(0.55+0.45*norm(stats.tec)),pace};
+    let pace=0.28+shot.power*(0.6+0.07*(stats.pow-1));
+    // STRIKE-Y: under the ball (>0) chips it — slower + lofted; top (<0) drives it down, keeps pace.
+    const vy=shot.strikeY, chip=Math.max(0,vy);
+    pace*=(1-0.5*chip);
+    const ty=Math.max(-0.05,Math.min(1.12,shot.aimY+0.32*vy));
+    ball={t:0,dur:0.74/(0.6+pace),tx:shot.aimX,ty,curve:shot.curve*(0.55+0.45*norm(stats.tec)),pace,chip};
   }
   function resolveAttack(){
     const fx=ball.tx+ball.curve,fy=ball.ty;let r;
@@ -682,7 +704,7 @@
   function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);
     if(screen==='practice'||screen==='shootout'){draw();drawMeter();}requestAnimationFrame(loop);}
   function update(dt){
-    if(['aimX','aimY','power','curve'].includes(phase)){sweep.val+=sweep.dir*sweep.speed*dt;
+    if(['aimX','aimY','power'].includes(phase)){sweep.val+=sweep.dir*sweep.speed*dt;
       if(sweep.val>1){sweep.val=1;sweep.dir=-1;}if(sweep.val<0){sweep.val=0;sweep.dir=1;}}
     if(phase==='flight'){ball.t+=dt/ball.dur;keeper.t=Math.min(1,keeper.t+dt/KEEPER_DIVE);if(ball.t>=1){ball.t=1;resolveAttack();}}
     if(phase==='d_cue'){
@@ -847,15 +869,32 @@
     if(phase==='flight'){centerMsg('…','#f4f1e6');return;}
     if(phase==='result'){centerMsg(resText+'  —  tap to continue',resCol);return;}
     if(phase==='power'){centerMsg('POWER  ▲  higher = faster — tap / space to launch','#ffc42e');return;}
+    if(phase==='curve'){drawCurveBall();return;}
     mctx.fillStyle='#0c0a07';mctx.fillRect(x,y,w,h);let label='';
     if(phase==='aimX'){label='AIM  ◄  ►  (left / right)';postTick(x+w*((-1-AIMX_MIN)/(AIMX_MAX-AIMX_MIN)));postTick(x+w*((1-AIMX_MIN)/(AIMX_MAX-AIMX_MIN)));}
     else if(phase==='aimY'){label='AIM  ▼  ▲  (low / high)';postTick(x+w*((0-AIMY_MIN)/(AIMY_MAX-AIMY_MIN)));postTick(x+w*((1-AIMY_MIN)/(AIMY_MAX-AIMY_MIN)));}
-    else if(phase==='curve'){label='CURVE  ◄ bend · bend ►';const half=sweetHalf(norm(stats.tec));mctx.fillStyle='rgba(43,80,226,.8)';mctx.fillRect(x+(0.5-half)*w,y,half*2*w,h);
-      mctx.strokeStyle='#f4f1e6';mctx.lineWidth=2;mctx.beginPath();mctx.moveTo(x+w/2,y-5);mctx.lineTo(x+w/2,y+h+5);mctx.stroke();}
     mctx.fillStyle='#f0e9d6';mctx.font='bold 13px Arial';mctx.textAlign='left';mctx.textBaseline='alphabetic';mctx.fillText(label,x,y-12);
     if(pressure){mctx.fillStyle='#ff2e63';mctx.textAlign='right';mctx.fillText('⚡ PRESSURE',x+w,y-12);}
     const mx=x+sweep.val*w;mctx.fillStyle='#ffc42e';mctx.fillRect(mx-4,y-7,8,h+14);mctx.strokeStyle='#15110d';mctx.lineWidth=2;mctx.strokeRect(mx-4,y-7,8,h+14);
     mctx.strokeStyle='#f0e9d6';mctx.lineWidth=3;mctx.strokeRect(x,y,w,h);}
+  // curve phase: click WHERE on the ball you strike. Sides bend, under chips (Panenka), top drives low.
+  function drawCurveBall(){
+    const cx=MW/2, cy=MH/2, R=BALL_R, im=SPR['ball'];
+    // ball
+    if(sprReady(im)) mctx.drawImage(im, cx-R, cy-R, R*2, R*2);
+    else{mctx.fillStyle='#f6f3ea';mctx.beginPath();mctx.arc(cx,cy,R,0,7);mctx.fill();mctx.lineWidth=2;mctx.strokeStyle='#15110d';mctx.stroke();}
+    // centre cross (clean-strike reference)
+    mctx.strokeStyle='rgba(244,241,230,.4)';mctx.lineWidth=1;mctx.setLineDash([4,4]);
+    mctx.beginPath();mctx.moveTo(cx,cy-R-4);mctx.lineTo(cx,cy+R+4);mctx.moveTo(cx-R-4,cy);mctx.lineTo(cx+R+4,cy);mctx.stroke();mctx.setLineDash([]);
+    // contact crosshair following the pointer (2D)
+    if(curveHoverX!=null&&curveHoverY!=null){
+      const hx=cx+curveHoverX*R, hy=cy+curveHoverY*R;
+      mctx.strokeStyle='#ff2e63';mctx.lineWidth=3;
+      mctx.beginPath();mctx.arc(hx,hy,9,0,7);mctx.stroke();
+      mctx.beginPath();mctx.moveTo(hx-15,hy);mctx.lineTo(hx-5,hy);mctx.moveTo(hx+5,hy);mctx.lineTo(hx+15,hy);
+      mctx.moveTo(hx,hy-15);mctx.lineTo(hx,hy-5);mctx.moveTo(hx,hy+5);mctx.lineTo(hx,hy+15);mctx.stroke();
+    }
+  }
   function postTick(px){mctx.strokeStyle='rgba(255,255,255,.5)';mctx.lineWidth=2;mctx.setLineDash([4,4]);mctx.beginPath();mctx.moveTo(px,BAR.y);mctx.lineTo(px,BAR.y+BAR.h);mctx.stroke();mctx.setLineDash([]);}
   function centerMsg(t,col){mctx.fillStyle=col;mctx.font='800 22px Impact, sans-serif';mctx.textAlign='center';mctx.textBaseline='middle';mctx.fillText(t,MW/2,MH/2);}
 
@@ -877,7 +916,10 @@
     if(phase==='result'&&resultTimer<0.25)return;lock();});
   mv.addEventListener('pointerdown',e=>{e.preventDefault();if(ac().state==='suspended')ac().resume();
     if(screen==='shootout'&&subMode==='defend'){if(phase==='d_result'&&resultTimer>=0.25)advanceEvent();return;}
+    if(phase==='curve'){const o=meterContactOffset(e);strikeBall(o.x,o.y);return;}   // click the ball → contact point
     if(phase==='result'&&resultTimer<0.25)return;lock();});
+  mv.addEventListener('pointermove',e=>{if(phase==='curve'){const o=meterContactOffset(e);curveHoverX=o.x;curveHoverY=o.y;}});
+  mv.addEventListener('pointerleave',()=>{curveHoverX=null;curveHoverY=null;});
   addEventListener('keydown',e=>{if(e.code!=='Space')return;e.preventDefault();
     if(screen==='shootout'&&subMode==='defend'){if(phase==='d_result'&&resultTimer>=0.25)advanceEvent();return;}
     if((screen==='practice'||screen==='shootout')){if(phase==='result'&&resultTimer<0.25)return;lock();}});
