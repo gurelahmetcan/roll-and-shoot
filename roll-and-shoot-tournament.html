@@ -347,11 +347,53 @@
   let screen='build',subMode='attack',phase='idle';
   const shot={aimX:0,aimY:.5,power:.6,curve:0};const sweep={val:0,dir:1,speed:.9};
   let keeper=mkKeeper();let ball=null,result=null,resText='',resCol='#ffc42e',shake=0,flash=0,resultTimer=0;const nets=[];
-  function mkKeeper(){return{t:0,committed:false,sx:490,sy:KEEPER_REST_Y,cx:490,cy:KEEPER_REST_Y,r:70};}
-  // catch radius from keeper stats (the circle IS the hitbox)
+  function mkKeeper(){return{t:0,committed:false,sx:490,sy:KEEPER_REST_Y,cx:490,cy:KEEPER_REST_Y,r:70,rating:7};}
+  // catch radius from keeper stats — kept only for the debug-circle overlay now; real saves use pixel-perfect below
   const KEEPER_R={1:32,2:36,3:38,4:40,5:42,6:44,7:46,8:48,9:50,10:52};
   function keeperRadius(k){const rt=Math.max(1,Math.min(10,Math.round(k.rating||7)));return KEEPER_R[rt];}
   const KEEPER_DIVE=0.5;   // fixed seconds for a full dive — a fast enough ball beats the keeper to the corner
+
+  // ===== PIXEL-PERFECT KEEPER COLLISION (tuned in collision-sandbox.html) =====
+  const KEEPER_REACH_SAMPLES=11, KEEPER_REACH_ALPHA_TH=40;
+  function reachPaddingForRating(rating){ // rating 1..10 -> reach padding px, rating 7 = the sandbox-tuned 8px default
+    const rt=Math.max(1,Math.min(10,Math.round(rating||7)));
+    return rt<=7 ? 3+(rt-1)*(8-3)/6 : 8+(rt-7)*(16-8)/3;
+  }
+  const keeperMaskCache={};
+  function keeperMask(key){
+    if(keeperMaskCache[key]) return keeperMaskCache[key];
+    const im=SPR[key]; if(!sprReady(im)) return null;
+    const w=im.naturalWidth,h=im.naturalHeight;
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const cctx=c.getContext('2d');cctx.drawImage(im,0,0,w,h);
+    const m={w,h,data:cctx.getImageData(0,0,w,h).data};
+    keeperMaskCache[key]=m; return m;
+  }
+  function keeperMaskAlphaAt(m,lx,ly){
+    lx=Math.round(lx);ly=Math.round(ly);
+    if(lx<0||ly<0||lx>=m.w||ly>=m.h) return 0;
+    return m.data[(ly*m.w+lx)*4+3];
+  }
+  function keeperPoseKey(){
+    if(!keeper.committed) return 'kIdle';
+    const dx=keeper.cx-keeper.sx;
+    if(dx<-6) return 'kLeft'; if(dx>6) return 'kRight';
+    return 'kIdle';
+  }
+  function keeperCatches(px,py){
+    const kp=keeperNow(),poseKey=keeperPoseKey(),im=SPR[poseKey],mask=keeperMask(poseKey);
+    if(!mask||!sprReady(im)) return Math.hypot(px-kp.x,py-kp.y)<=keeper.r+5; // sprite not decoded yet — fall back to circle just in case
+    const h=KEEPER_SPRITE_H,w=h*im.naturalWidth/im.naturalHeight;
+    const boxX=kp.x-w/2,boxY=kp.y-h*(1-KEEPER_FOOT);
+    const pad=reachPaddingForRating(keeper.rating);
+    for(let i=-1;i<KEEPER_REACH_SAMPLES;i++){
+      const sx=i<0?px:px+Math.cos(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
+      const sy=i<0?py:py+Math.sin(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
+      const lx=(sx-boxX)/w*im.naturalWidth, ly=(sy-boxY)/h*im.naturalHeight;
+      if(keeperMaskAlphaAt(mask,lx,ly)>KEEPER_REACH_ALPHA_TH) return true;
+    }
+    return false;
+  }
   function keeperNow(){const e=Math.min(1,keeper.t);return{x:lerp(keeper.sx,keeper.cx,e),y:lerp(keeper.sy,keeper.cy,e)};}
 
   // shootout state
@@ -368,7 +410,7 @@
 
   // ---- ATTACK ----
   function beginKick(){subMode='attack';phase='aimX';shot.aimX=0;shot.aimY=.5;shot.power=.6;shot.curve=0;
-    sweep.val=0;sweep.dir=1;sweep.speed=meterSpeed(.95);keeper=mkKeeper();keeper.r=keeperRadius(oppKeeper||{rating:7});ball=null;result=null;}
+    sweep.val=0;sweep.dir=1;sweep.speed=meterSpeed(.95);keeper=mkKeeper();keeper.r=keeperRadius(oppKeeper||{rating:7});keeper.rating=(oppKeeper||{rating:7}).rating||7;ball=null;result=null;}
   function lock(){
     if(phase==='idle'){beginKick();return;}
     if(phase==='result'){ if(screen==='shootout')advanceEvent(); else beginKick(); return; }
@@ -386,7 +428,7 @@
     if(Math.random()<0.4){kgx=shot.aimX+(Math.random()*2-1)*0.34;kgy=shot.aimY+(Math.random()*2-1)*0.26;}
     else{kgx=(Math.random()*2-1)*0.9;kgy=0.12+Math.random()*0.72;}
     kgx=Math.max(-1,Math.min(1,kgx));kgy=Math.max(0.05,Math.min(1,kgy));
-    keeper=mkKeeper();keeper.committed=true;keeper.t=0;keeper.r=keeperRadius(ok);
+    keeper=mkKeeper();keeper.committed=true;keeper.t=0;keeper.r=keeperRadius(ok);keeper.rating=ok.rating||7;
     keeper.sx=(GOAL.l+GOAL.r)/2;keeper.sy=KEEPER_REST_Y;   // rests feet-on-line, dives out to the guess
     const kp=goalPt(kgx,kgy);
     keeper.cx=Math.max(GOAL.l+12,Math.min(GOAL.r-12,kp.x));
@@ -399,8 +441,7 @@
     const fx=ball.tx+ball.curve,fy=ball.ty;let r;
     if(Math.abs(fx)>1.0||fy>1.0||fy<-0.05){r='OUT';}
     else{const bp=goalPt(Math.max(-1.05,Math.min(1.05,fx)),Math.max(0,Math.min(1.05,fy)));
-      const kp=keeperNow();
-      const saved=Math.hypot(bp.x-kp.x,bp.y-kp.y)<=keeper.r+5;
+      const saved=keeperCatches(bp.x,bp.y);
       r=saved?'SAVE':'GOAL';}
     result=r;
     if(r==='GOAL'){resText='GOAL!';resCol='#ffc42e';flash=1;sfxGoal();ripple(goalPt(Math.max(-1,Math.min(1,fx)),Math.max(.05,fy)));if(screen==='shootout')yourScore++;else pracGoals++;}
@@ -431,7 +472,7 @@
     gx=Math.max(-1.3,Math.min(1.3,gx));gy=Math.max(-0.15,Math.min(1.35,gy));
     const k=chosenKeeper.keeper;dive={gx,gy};
     const tp=goalPt(gx,Math.max(0.02,Math.min(1.05,gy)));
-    keeper=mkKeeper();keeper.committed=true;keeper.t=0;keeper.r=keeperRadius(k);
+    keeper=mkKeeper();keeper.committed=true;keeper.t=0;keeper.r=keeperRadius(k);keeper.rating=k.rating||7;
     keeper.cx=Math.max(GOAL.l+12,Math.min(GOAL.r-12,tp.x));
     keeper.cy=Math.max(GOAL.top+12,Math.min(GOAL.bot-12,tp.y));
   }
@@ -443,8 +484,7 @@
     if(aiShot.ty>1.0||Math.abs(aiShot.tx)>1.0){r='MISS';sfxMiss();}
     else{
       const tp=goalPt(aiShot.tx,aiShot.ty);
-      const kp=keeperNow();
-      const saved=Math.hypot(tp.x-kp.x,tp.y-kp.y)<=keeper.r+5;
+      const saved=keeperCatches(tp.x,tp.y);
       if(saved){r='SAVE';sfxSave();}else{r='GOAL';oppScore++;sfxGoal();ripple(tp);}
     }
     result=r;
@@ -1134,7 +1174,7 @@
   // ===== SHOOTOUT (live match engine — reused for every live game) =====
   function startEvent(){const idx=(round-1)%5;
     if(half===0){subMode='attack';cur=lineup[idx].player;stats.pow=cur.p;stats.acc=cur.a;stats.tec=cur.t;stats.com=cur.c;oppKeeper=opponent.keeper;updateStrip();beginKick();}
-    else{subMode='defend';aiTaker=(opponent.takers||[])[idx];if(!aiTaker){advanceEvent();return;}aiShot=chooseAIShot(aiTaker);dive=null;aiBall=null;result=null;keeper=mkKeeper();keeper.r=keeperRadius(chosenKeeper.keeper);cueT=0;cueDelay=0.55+Math.random()*0.65;phase='d_cue';updateStrip();}
+    else{subMode='defend';aiTaker=(opponent.takers||[])[idx];if(!aiTaker){advanceEvent();return;}aiShot=chooseAIShot(aiTaker);dive=null;aiBall=null;result=null;keeper=mkKeeper();keeper.r=keeperRadius(chosenKeeper.keeper);keeper.rating=chosenKeeper.keeper.rating||7;cueT=0;cueDelay=0.55+Math.random()*0.65;phase='d_cue';updateStrip();}
   }
   function advanceEvent(){
     if(half===0){half=1;startEvent();}
