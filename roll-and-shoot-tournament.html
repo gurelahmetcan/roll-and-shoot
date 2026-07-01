@@ -81,7 +81,7 @@
   input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;margin:7px 0 0;background:var(--ink);border:2px solid var(--ink);cursor:pointer;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;background:var(--pink);border:2px solid var(--ink);cursor:pointer;}
   input[type=range]::-moz-range-thumb{width:18px;height:18px;background:var(--pink);border:2px solid var(--ink);cursor:pointer;border-radius:0;}
-  .stat.acc input::-webkit-slider-thumb{background:var(--blue);}.stat.tec input::-webkit-slider-thumb{background:var(--yellow);}.stat.com input::-webkit-slider-thumb{background:var(--green);}
+  .stat.tec input::-webkit-slider-thumb{background:var(--green);}
   .toggle{display:flex;align-items:center;gap:10px;margin-top:16px;border-top:3px dashed var(--ink);padding-top:14px;}
   .toggle button{font-family:Impact,sans-serif;text-transform:uppercase;letter-spacing:1px;border:3px solid var(--ink);background:var(--paper);color:var(--ink);padding:8px 14px;cursor:pointer;font-size:14px;box-shadow:3px 3px 0 var(--ink);}
   .toggle button.on{background:var(--pink);color:var(--paper);}
@@ -288,8 +288,7 @@
     <p class="note">Drag these and feel the bar change.</p>
     <div class="grid">
       <div class="stat pow"><div class="row"><span>Power</span><span class="v" id="vPow">7</span></div><div class="desc">Ball speed — fast shots can beat the keeper.</div><input type="range" id="sPow" min="1" max="10" value="7"></div>
-      <div class="stat tec"><div class="row"><span>Technique</span><span class="v" id="vTec">7</span></div><div class="desc">Curve sweet-spot + bend.</div><input type="range" id="sTec" min="1" max="10" value="7"></div>
-      <div class="stat com"><div class="row"><span>Composure</span><span class="v" id="vCom">7</span></div><div class="desc">Slower, steadier meters.</div><input type="range" id="sCom" min="1" max="10" value="7"></div>
+      <div class="stat tec"><div class="row"><span>Technique</span><span class="v" id="vTec">7</span></div><div class="desc">Slower, steadier meters.</div><input type="range" id="sTec" min="1" max="10" value="7"></div>
     </div>
     <div class="toggle"><button id="pressBtn">Pressure: Off</button><div class="lab">Knockout pressure — bar speeds up &amp; sweet-spots shrink.</div></div>
     <div class="hint"><b>Attack:</b> tap the bar / <kbd>Space</kbd> to lock aim ◄►, aim ▼▲, power — then click <b>where on the ball</b> you strike: sides bend it the other way, under = chip / Panenka, top = driven low.</div>
@@ -443,13 +442,13 @@
       const key=r.country_code+r.year;
       if(!byTeam.has(key)) byTeam.set(key,{code:r.country_code,year:+r.year,col:SQUAD_COLORS[key]||["#888","#ccc","#444"],takers:[],keeper:null});
       const sq=byTeam.get(key);
-      if(r.role==='taker') sq.takers.push({n:r.name,p:+r.power,a:+r.accuracy,t:+r.technique,c:+r.composure});
-      else if(r.role==='keeper') sq.keeper={n:r.name,rating:+r.composure};
+      if(r.role==='taker') sq.takers.push({n:r.name,p:+r.power,tec:+r.technique});
+      else if(r.role==='keeper') sq.keeper={n:r.name,rating:+r.technique};
     });
     return Array.from(byTeam.values());
   }
   function loadSquadsFromCSV(){
-    return fetch('players-template.csv').then(r=>r.text()).then(text=>{ SQUADS=buildSquadsFromRows(parseCSV(text)); });
+    return fetch('players-template.csv',{cache:'no-store'}).then(r=>r.text()).then(text=>{ SQUADS=buildSquadsFromRows(parseCSV(text)); });
   }
   const flagCss=col=>`background:linear-gradient(180deg,${col[0]} 0 34%,${col[1]} 34% 67%,${col[2]} 67% 100%)`;
   const CODE2ISO={"BRA":"br","FRA":"fr","ARG":"ar","GER":"de","ITA":"it","ESP":"es","ENG":"gb-eng","TUR":"tr","NED":"nl","CRO":"hr","POR":"pt","URU":"uy","AUS":"au","BEL":"be","BUL":"bg","CHI":"cl","CMR":"cm","COL":"co","CRC":"cr","DEN":"dk","GHA":"gh","GRE":"gr","JPN":"jp","KOR":"kr","MAR":"ma","MEX":"mx","SEN":"sn","SWE":"se","USA":"us"};
@@ -523,8 +522,10 @@
   const goalPt=(gx,gy)=>({x:GOAL.l+(gx*0.5+0.5)*GW,y:GOAL.bot-gy*GH});
   const lerp=(a,b,t)=>a+(b-a)*t,easeOut=t=>1-Math.pow(1-t,2.2);
   const norm=v=>(v-1)/9;
+  const POWER_SCALE_MAX=10;   // Power stat is rated 1-10; the gauge's reachable ceiling is stats.pow/10 of full height
+  const powerCapFrac=()=>Math.min(1,Math.max(0.05,stats.pow/POWER_SCALE_MAX));
 
-  const stats={pow:7,acc:7,tec:7,com:7};let pressure=false,pressureChosen=false;
+  const stats={pow:7,tec:7};let pressure=false,pressureChosen=false;
   let screen='build',subMode='attack',phase='idle';
   const shot={aimX:0,aimY:.5,power:.6,curve:0,strikeY:0};const sweep={val:0,dir:1,speed:.9};
   let keeper=mkKeeper();let ball=null,result=null,resText='',resCol='#ffc42e',shake=0,flash=0,resultTimer=0;const nets=[];
@@ -586,8 +587,7 @@
   // practice cumulative
   let pracGoals=0,pracTaken=0;
 
-  function meterSpeed(b){const calm=norm(stats.com);let s=b*SWEEP*(1.35-0.6*calm);if(pressure)s*=(1.12+0.6*(1-calm));return s;}
-  function sweetHalf(sn){let h=0.12+0.16*sn;if(pressure)h*=(0.55+0.25*norm(stats.com));return h;}
+  function meterSpeed(b){const calm=norm(stats.tec);let s=b*SWEEP*(1.35-0.6*calm);if(pressure)s*=(1.12+0.6*(1-calm));return s;}
 
   // ---- ATTACK ----
   function beginKick(){subMode='attack';phase='aimX';shot.aimX=0;shot.aimY=.5;shot.power=.6;shot.curve=0;shot.strikeY=0;
@@ -631,13 +631,14 @@
     const kp=goalPt(kgx,kgy);
     keeper.cx=Math.max(GOAL.l+12,Math.min(GOAL.r-12,kp.x));
     keeper.cy=Math.max(GOAL.top+12,Math.min(GOAL.bot-12,kp.y));
-    // POWER → ball speed, scaled by the striker's Power stat. A fast enough shot reaches the corner before the keeper.
+    // POWER → ball speed, scaled by the striker's Power stat, exactly as before. The gauge cap (powerCapFrac)
+    // additionally bounds how high shot.power itself can reach — that's Power's second, independent lever.
     let pace=0.28+shot.power*(0.6+0.07*(stats.pow-1));
     // STRIKE-Y: under the ball (>0) chips it — slower + lofted; top (<0) drives it down, keeps pace.
     const vy=shot.strikeY, chip=Math.max(0,vy);
     pace*=(1-0.5*chip);
     const ty=Math.max(-0.05,Math.min(1.12,shot.aimY+0.32*vy));
-    ball={t:0,dur:0.74/(0.6+pace),tx:shot.aimX,ty,curve:shot.curve*(0.55+0.45*norm(stats.tec)),pace,chip};
+    ball={t:0,dur:0.74/(0.6+pace),tx:shot.aimX,ty,curve:shot.curve,pace,chip};
   }
   function resolveAttack(){
     const fx=ball.tx+ball.curve,fy=ball.ty;let r;
@@ -657,11 +658,12 @@
 
   // ---- DEFEND (click to dive) ----
   function chooseAIShot(t){
+    // Takers now only carry {p, tec} — accuracy/old-technique/composure all collapsed into tec.
     const side=Math.random()<.5?-1:1;
-    let mag=0.30+0.62*norm(t.a)*(0.45+0.55*Math.random());
+    let mag=0.30+0.62*norm(t.tec)*(0.45+0.55*Math.random());
     let tx=side*Math.min(0.98,mag);
-    let ty=0.18+(0.55+0.4*norm(t.t))*Math.random()*0.95;ty=Math.min(0.98,ty);
-    if(Math.random()<(1-norm(t.c))*0.07){ty=1.18;}          // occasional skyer
+    let ty=0.18+(0.55+0.4*norm(t.tec))*Math.random()*0.95;ty=Math.min(0.98,ty);
+    if(Math.random()<(1-norm(t.tec))*0.07){ty=1.18;}          // occasional skyer
     return{tx,ty};
   }
   function launchAIShot(){const tt=goalPt(aiShot.tx,Math.max(0.02,Math.min(1.12,aiShot.ty)));
@@ -705,7 +707,10 @@
     if(screen==='practice'||screen==='shootout'){draw();drawMeter();}requestAnimationFrame(loop);}
   function update(dt){
     if(['aimX','aimY','power'].includes(phase)){sweep.val+=sweep.dir*sweep.speed*dt;
-      if(sweep.val>1){sweep.val=1;sweep.dir=-1;}if(sweep.val<0){sweep.val=0;sweep.dir=1;}}
+      // Power's gauge ceiling is capped by the striker's Power stat; the bounce speed itself (sweep.speed,
+      // from Technique via meterSpeed) is untouched, so px/ms difficulty stays identical regardless of cap.
+      const cap=phase==='power'?powerCapFrac():1;
+      if(sweep.val>cap){sweep.val=cap;sweep.dir=-1;}if(sweep.val<0){sweep.val=0;sweep.dir=1;}}
     if(phase==='flight'){ball.t+=dt/ball.dur;keeper.t=Math.min(1,keeper.t+dt/KEEPER_DIVE);if(ball.t>=1){ball.t=1;resolveAttack();}}
     if(phase==='d_cue'){
       cueT+=dt;
@@ -814,13 +819,23 @@
   }
   function drawPowerGauge(){
     const gw=34,gx=W-84,gtop=GOAL.top-4,gbot=SPOT.y+24,gh=gbot-gtop;
-    ctx.fillStyle='#15110d';ctx.fillRect(gx-7,gtop-28,gw+14,gh+50);                 // casing
-    const g=ctx.createLinearGradient(0,gbot,0,gtop);
+    const cap=powerCapFrac(),capTop=gbot-gh*cap;   // ceiling reachable by this taker's Power stat
+    ctx.fillStyle='#15110d';ctx.fillRect(gx-7,gtop-28,gw+14,gh+50);                 // casing (fixed size for every taker)
+    // locked zone above the cap — hatched + dim, so a low-Power taker's short gauge reads as intentional, not broken
+    if(capTop>gtop){
+      ctx.save();ctx.fillStyle='#1c1712';ctx.fillRect(gx,gtop,gw,capTop-gtop);
+      ctx.strokeStyle='rgba(244,241,230,.10)';ctx.lineWidth=1;ctx.beginPath();
+      for(let hx=-gw;hx<gw*2;hx+=10){ctx.moveTo(gx+hx,gtop);ctx.lineTo(gx+hx+(capTop-gtop),capTop);}
+      ctx.stroke();ctx.restore();
+    }
+    const g=ctx.createLinearGradient(0,gbot,0,capTop);
     g.addColorStop(0,'#3e9b4f');g.addColorStop(.45,'#ffc42e');g.addColorStop(.78,'#ff7a1a');g.addColorStop(1,'#ff2e63');
-    ctx.fillStyle='#0c0a07';ctx.fillRect(gx,gtop,gw,gh);                              // empty track
+    ctx.fillStyle='#0c0a07';ctx.fillRect(gx,capTop,gw,gbot-capTop);                   // empty (reachable) track
     const fillH=gh*sweep.val;ctx.fillStyle=g;ctx.fillRect(gx,gbot-fillH,gw,fillH);    // rising fill
     ctx.strokeStyle='rgba(244,241,230,.22)';ctx.lineWidth=1;
     for(let i=1;i<10;i++){const ty=gbot-gh*i/10;ctx.beginPath();ctx.moveTo(gx,ty);ctx.lineTo(gx+gw,ty);ctx.stroke();}
+    // cap line: a bright marker baked onto the casing showing this taker's hard ceiling, visible before any input
+    ctx.strokeStyle='#ff2e63';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(gx-7,capTop);ctx.lineTo(gx+gw+7,capTop);ctx.stroke();
     const my=gbot-fillH;ctx.fillStyle='#fff';ctx.fillRect(gx-7,my-3,gw+14,6);          // marker
     ctx.strokeStyle='#15110d';ctx.lineWidth=2;ctx.strokeRect(gx-7,my-3,gw+14,6);
     ctx.strokeStyle='#f0e9d6';ctx.lineWidth=3;ctx.strokeRect(gx,gtop,gw,gh);
@@ -976,7 +991,7 @@
   }
   function renderDraft(){const row=el('draftrow');row.innerHTML='';
     for(let i=0;i<5;i++){const d=lineup[i];const div=document.createElement('div');div.className='slot'+(d?'':' empty');
-      if(d)div.innerHTML=`<div class="si">${i+1} · ${d.code} ${d.year}</div><div class="sn">${d.player.n}</div><div class="sc">P${d.player.p} T${d.player.t} C${d.player.c}</div>`;
+      if(d)div.innerHTML=`<div class="si">${i+1} · ${d.code} ${d.year}</div><div class="sn">${d.player.n}</div><div class="sc">P${d.player.p} T${d.player.tec}</div>`;
       else div.innerHTML=`<div class="si">${i+1}</div><div class="sn" style="opacity:.4">—</div>`;row.appendChild(div);}
     const gk=el('gkSlot');
     if(chosenKeeper){gk.className='slot gk';gk.innerHTML=`<div class="si">GK · ${chosenKeeper.code} ${chosenKeeper.year}</div><div class="sn">${chosenKeeper.keeper.n}</div><div class="sc">RATING ${chosenKeeper.keeper.rating}</div>`;}
@@ -987,7 +1002,7 @@
     r.innerHTML=`<div class="squadhead"><span class="flag" style="${flagStyle(sq.code,sq.col)}"></span><span class="code">${sq.code}</span><span class="yr">'${String(sq.year).slice(2)}</span></div><div class="takers" id="takers"></div>`;
     const shuffled=[...sq.takers].sort(()=>Math.random()-.5).slice(0,3);
     const t=el('takers');shuffled.forEach(pl=>{const b=document.createElement('button');b.className='taker';
-      b.innerHTML=`<div class="nm">${pl.n}</div><div class="chips"><span class="chip p">PWR ${pl.p}</span><span class="chip t">TEC ${pl.t}</span><span class="chip c">CMP ${pl.c}</span></div>`;
+      b.innerHTML=`<div class="nm">${pl.n}</div><div class="chips"><span class="chip p">PWR ${pl.p}</span><span class="chip c">TEC ${pl.tec}</span></div>`;
       b.onclick=()=>draftTaker(sq,pl);t.appendChild(b);});}
   function renderRevealKeepers(three){const r=el('reveal');
     r.innerHTML=`<div class="squadhead"><span class="code" style="color:var(--blue)">PICK YOUR KEEPER</span></div><div class="takers" id="takers"></div>`;
@@ -1459,7 +1474,7 @@
 
   // ===== SHOOTOUT (live match engine — reused for every live game) =====
   function startEvent(){const idx=(round-1)%5;
-    if(half===0){subMode='attack';cur=lineup[idx].player;stats.pow=cur.p;stats.acc=cur.a;stats.tec=cur.t;stats.com=cur.c;oppKeeper=opponent.keeper;updateStrip();beginKick();}
+    if(half===0){subMode='attack';cur=lineup[idx].player;stats.pow=cur.p;stats.tec=cur.tec;oppKeeper=opponent.keeper;updateStrip();beginKick();}
     else{subMode='defend';aiTaker=(opponent.takers||[])[idx];if(!aiTaker){advanceEvent();return;}aiShot=chooseAIShot(aiTaker);dive=null;aiBall=null;result=null;keeper=mkKeeper();keeper.r=keeperRadius(chosenKeeper.keeper);keeper.rating=chosenKeeper.keeper.rating||7;cueT=0;cueDelay=0.55+Math.random()*0.65;phase='d_cue';updateStrip();}
   }
   function advanceEvent(){
@@ -1783,10 +1798,10 @@
 
   // ===== PRACTICE / TABS =====
   const bind=(id,key,vid)=>{const s=el(id),v=el(vid);s.addEventListener('input',()=>{stats[key]=+s.value;v.textContent=s.value;if(phase==='power')sweep.speed=meterSpeed(1.05);if(phase==='curve')sweep.speed=meterSpeed(1.15);});};
-  bind('sPow','pow','vPow');bind('sTec','tec','vTec');bind('sCom','com','vCom');
+  bind('sPow','pow','vPow');bind('sTec','tec','vTec');
   el('pressBtn').addEventListener('click',()=>{pressureChosen=!pressureChosen;pressure=pressureChosen;el('pressBtn').textContent='Pressure: '+(pressureChosen?'ON':'Off');el('pressBtn').classList.toggle('on',pressureChosen);});
   el('tabBuild').onclick=()=>{if(screen==='shootout')return;setScreen('build');};
-  el('tabPractice').onclick=()=>{if(screen==='shootout')return;stats.pow=7;stats.tec=7;stats.com=7;['vPow','vTec','vCom'].forEach(id=>el(id).textContent='7');['sPow','sTec','sCom'].forEach(id=>el(id).value=7);setScreen('practice');};
+  el('tabPractice').onclick=()=>{if(screen==='shootout')return;stats.pow=7;stats.tec=7;['vPow','vTec'].forEach(id=>el(id).textContent='7');['sPow','sTec'].forEach(id=>el(id).value=7);setScreen('practice');};
 
   // ===== HOME / LANDING =====
   function enterGame(){
