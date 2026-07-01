@@ -762,21 +762,35 @@
     ctx.beginPath();ctx.moveTo(bxL+inset,bTop);ctx.lineTo(bxR-inset,bTop);ctx.lineTo(bxR,bBot);ctx.lineTo(bxL,bBot);ctx.closePath();ctx.stroke();
     ctx.beginPath();ctx.arc(490,510,64,Math.PI,0);ctx.stroke();
     ctx.fillStyle='rgba(244,241,230,.9)';ctx.beginPath();ctx.arc(SPOT.x,SPOT.y-4,5,0,7);ctx.fill();}
-  function drawGoal(){const{l,r,top,bot}=GOAL;const midX=(l+r)/2,vanX=midX,vanY=top-46;   // net's faux vanishing point, just above the crossbar
-    // net — vertical strands taper in toward the vanishing point so the mesh reads as receding, not flat
-    ctx.strokeStyle='rgba(244,241,230,.35)';ctx.lineWidth=1;
-    for(let x=l;x<=r;x+=14){
-      const nearX=x,farX=lerp(vanX,x,0.86);   // slight inward taper at the back of the net
-      ctx.beginPath();ctx.moveTo(farX,top);ctx.lineTo(nearX,bot);ctx.stroke();
+  function drawGoal(){const{l,r,top,bot}=GOAL;
+    // The net is a real receding box: a back edge that's higher up AND narrower than the
+    // goal mouth (not just a horizontal shear), so it reads as depth rather than a tilted flat mesh.
+    const depth=44,inset=32;                      // how far back + how much the far edge narrows
+    const backY=top-depth,backL=l+inset,backR=r-inset;
+    const atX=(x,e)=>lerp(x,lerp(backL,backR,(x-l)/(r-l)),e);   // x at recession fraction e (0=front,1=back)
+    const atY=e=>lerp(bot,backY,e);
+    // side walls — subtle dark wedges so the box's sides are visible, like looking slightly into it
+    const sideGrad=(x0,x1)=>{const g=ctx.createLinearGradient(x0,0,x1,0);g.addColorStop(0,'rgba(0,0,0,.32)');g.addColorStop(1,'rgba(0,0,0,.04)');return g;};
+    ctx.fillStyle=sideGrad(l,backL);
+    ctx.beginPath();ctx.moveTo(l,bot);ctx.lineTo(l,top);ctx.lineTo(backL,backY);ctx.lineTo(backL,bot);ctx.closePath();ctx.fill();
+    ctx.fillStyle=sideGrad(r,backR);
+    ctx.beginPath();ctx.moveTo(r,bot);ctx.lineTo(r,top);ctx.lineTo(backR,backY);ctx.lineTo(backR,bot);ctx.closePath();ctx.fill();
+    // back-wall shadow — darkest right at the receded back edge, fading toward the mouth
+    const backShade=ctx.createLinearGradient(0,backY,0,bot);
+    backShade.addColorStop(0,'rgba(0,0,0,.30)');backShade.addColorStop(0.5,'rgba(0,0,0,.08)');backShade.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=backShade;
+    ctx.beginPath();ctx.moveTo(backL,backY);ctx.lineTo(backR,backY);ctx.lineTo(r,bot);ctx.lineTo(l,bot);ctx.closePath();ctx.fill();
+    // mesh — verticals run from the full-width front (ground) to the narrower, higher back edge
+    ctx.strokeStyle='rgba(244,241,230,.32)';ctx.lineWidth=1;
+    for(let x=l;x<=r;x+=14){ctx.beginPath();ctx.moveTo(atX(x,1),backY);ctx.lineTo(x,bot);ctx.stroke();}
+    for(let e=0;e<=1.001;e+=1/Math.round((bot-backY)/14)){
+      const y=atY(e);ctx.beginPath();ctx.moveTo(atX(l,e),y);ctx.lineTo(atX(r,e),y);ctx.stroke();
     }
-    for(let y=top;y<=bot;y+=14){
-      const e=(y-top)/(bot-top),xl=lerp(lerp(vanX,l,0.86),l,e),xr=lerp(lerp(vanX,r,0.86),r,e);
-      ctx.beginPath();ctx.moveTo(xl,y);ctx.lineTo(xr,y);ctx.stroke();
-    }
-    // soft shadow where the net recedes into the back of the goal
-    const backShade=ctx.createLinearGradient(0,top,0,top+(bot-top)*0.4);
-    backShade.addColorStop(0,'rgba(0,0,0,.22)');backShade.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=backShade;ctx.fillRect(l,top,r-l,(bot-top)*0.4);
+    // roof rails — the two outermost strands drawn bolder, reading as the net's structural top edges
+    ctx.strokeStyle='rgba(244,241,230,.6)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(l,top);ctx.lineTo(backL,backY);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(r,top);ctx.lineTo(backR,backY);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(backL,backY);ctx.lineTo(backR,backY);ctx.stroke();
     // posts + crossbar drawn with a light bevel (dark outer edge, pale inner edge) to fake a rounded 3D post
     const postW=12;
     const bevel=(x,y,w,h,horiz)=>{const g=horiz?ctx.createLinearGradient(x,y,x,y+h):ctx.createLinearGradient(x,y,x+w,y);
