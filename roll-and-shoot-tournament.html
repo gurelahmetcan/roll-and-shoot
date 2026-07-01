@@ -556,21 +556,33 @@
     if(lx<0||ly<0||lx>=m.w||ly>=m.h) return 0;
     return m.data[(ly*m.w+lx)*4+3];
   }
-  function keeperPoseKey(){
-    if(!keeper.committed) return 'kIdle';
+  // Which sprite to show, plus an extra rotation for low corner dives (bottom-left/bottom-right)
+  // so the same lean-left/lean-right pose reads as a flying, stretched-out save instead of just leaning.
+  function keeperPose(){
+    if(!keeper.committed) return {key:'kIdle',angle:0};
     const dx=keeper.cx-keeper.sx;
-    if(dx<-6) return 'kLeft'; if(dx>6) return 'kRight';
-    return 'kIdle';
+    let key='kIdle'; if(dx<-6) key='kLeft'; else if(dx>6) key='kRight';
+    if(key==='kIdle') return {key,angle:0};
+    const isBottom=keeper.cy>(GOAL.top+GOAL.bot)/2;   // diving into the lower half of the goal
+    const angle=isBottom?(key==='kLeft'?-Math.PI/2:Math.PI/2):0;
+    return {key,angle};
+  }
+  // rotate a world point by -angle around kp, so it lands in the same local frame the (unrotated) mask was built from
+  function unrotatePoint(px,py,kp,angle){
+    if(!angle) return {x:px,y:py};
+    const dx=px-kp.x,dy=py-kp.y,c=Math.cos(-angle),s=Math.sin(-angle);
+    return {x:kp.x+dx*c-dy*s, y:kp.y+dx*s+dy*c};
   }
   function keeperCatches(px,py){
-    const kp=keeperNow(),poseKey=keeperPoseKey(),im=SPR[poseKey],mask=keeperMask(poseKey);
+    const kp=keeperNow(),{key:poseKey,angle}=keeperPose(),im=SPR[poseKey],mask=keeperMask(poseKey);
     if(!mask||!sprReady(im)) return Math.hypot(px-kp.x,py-kp.y)<=keeper.r+5; // sprite not decoded yet — fall back to circle just in case
     const h=KEEPER_SPRITE_H,w=h*im.naturalWidth/im.naturalHeight;
     const boxX=kp.x-w/2,boxY=kp.y-h*(1-KEEPER_FOOT);
     const pad=reachPaddingForRating(keeper.rating);
     for(let i=-1;i<KEEPER_REACH_SAMPLES;i++){
-      const sx=i<0?px:px+Math.cos(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
-      const sy=i<0?py:py+Math.sin(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
+      let sx=i<0?px:px+Math.cos(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
+      let sy=i<0?py:py+Math.sin(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
+      const u=unrotatePoint(sx,sy,kp,angle);sx=u.x;sy=u.y;
       const lx=(sx-boxX)/w*im.naturalWidth, ly=(sy-boxY)/h*im.naturalHeight;
       if(keeperMaskAlphaAt(mask,lx,ly)>KEEPER_REACH_ALPHA_TH) return true;
     }
@@ -776,13 +788,21 @@
     ctx.strokeStyle=ink;ctx.lineWidth=2;ctx.beginPath();ctx.arc(-6,-64,6,0,7);ctx.stroke();ctx.beginPath();ctx.arc(6,-64,6,0,7);ctx.stroke();
     ctx.fillStyle=ink;ctx.beginPath();ctx.arc(-4.5,-63,2.6,0,7);ctx.fill();ctx.beginPath();ctx.arc(7.5,-63,2.6,0,7);ctx.fill();
     ctx.restore();}
+  // like drawSprite, but rotated around kp — used for low-corner dives so the lean-left/lean-right
+  // pose reads as a flying, stretched-out save instead of just leaning sideways.
+  function drawSpriteRotated(im,kp,angle,h){
+    if(!sprReady(im))return false;
+    const w=h*im.naturalWidth/im.naturalHeight;
+    ctx.save();ctx.translate(kp.x,kp.y);if(angle)ctx.rotate(angle);
+    ctx.drawImage(im,-w/2,-h*(1-KEEPER_FOOT),w,h);
+    ctx.restore();return true;
+  }
   function drawKeeperFig(){
     const kp=keeperNow();const R=keeper.r;
-    let im=SPR.kIdle;
-    if(keeper.committed){const dx=keeper.cx-keeper.sx;if(dx<-6)im=SPR.kLeft;else if(dx>6)im=SPR.kRight;}
+    const {key,angle}=keeperPose();const im=SPR[key];
     const h=KEEPER_SPRITE_H;             // SAME for every keeper — only the catch circle (R) grows with rating
     if(window.kDebug){ctx.strokeStyle='rgba(255,46,99,.7)';ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.beginPath();ctx.arc(kp.x,kp.y,R,0,7);ctx.stroke();ctx.setLineDash([]);}
-    if(drawSprite(im,kp.x,kp.y+h*KEEPER_FOOT,h))return;
+    if(drawSpriteRotated(im,kp,angle,h))return;
     ctx.fillStyle='#1f7a63';ctx.beginPath();ctx.arc(kp.x,kp.y,R,0,7);ctx.fill();ctx.strokeStyle='#15110d';ctx.lineWidth=3;ctx.stroke();
   }
   function strikerSprite(kicking){return kicking?SPR.pShoot:SPR.pBack;}
