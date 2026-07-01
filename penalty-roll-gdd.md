@@ -11,7 +11,7 @@ A browser penalty shootout game with a full World Cup tournament wrapper. You dr
 ## File structure
 ```
 Roll&Shot/
-├── roll-and-shoot-tournament.html   ← entire game, ~1100 lines, single file
+├── index.html   ← entire game, ~1100 lines, single file
 └── assets/
     └── football.png                 ← ball sprite (referenced locally)
 ```
@@ -174,6 +174,6 @@ cd /path/to/Roll\&Shot
 claude
 ```
 
-The game is fully self-contained in `roll-and-shoot-tournament.html`. Open it directly in a browser to test (or `python3 -m http.server 8080` if you need asset loading). All JS is in one `<script>` tag as an IIFE — no modules.
+The game is fully self-contained in `index.html`. Open it directly in a browser to test (or `python3 -m http.server 8080` if you need asset loading). All JS is in one `<script>` tag as an IIFE — no modules.
 
 When asking Claude Code to edit: reference function names from the architecture section above. The file is ~1100 lines; key sections are clearly commented with `// ===== SECTION NAME =====` headers.
