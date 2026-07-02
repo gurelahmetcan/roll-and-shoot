@@ -511,6 +511,14 @@
   const cv=document.getElementById('game'),ctx=cv.getContext('2d');
   const mv=document.getElementById('meter'),mctx=mv.getContext('2d');
   const W=980,H=560,MW=980,MH=104;const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // HiDPI/responsive canvas: back the canvas with (displayed CSS size × devicePixelRatio) pixels so the
+  // browser never has to upscale a fixed 980px raster (blurry on stretched/standard-DPI screens).
+  // Drawing code keeps using logical W×H coordinates via the per-frame setTransform in draw()/drawMeter().
+  function fitCanvas(c,lw,lh){
+    const dpr=window.devicePixelRatio||1,cssW=c.clientWidth;if(!cssW)return;
+    const w=Math.round(cssW*dpr),h=Math.round(cssW*lh/lw*dpr);
+    if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+  }
   function fit(c,cx,w,h){const dpr=Math.min(window.devicePixelRatio||1,2);c.width=w*dpr;c.height=h*dpr;c.style.aspectRatio=w+'/'+h;cx.setTransform(dpr,0,0,dpr,0,0);}
   function fitAll(){fit(cv,ctx,W,H);fit(mv,mctx,MW,MH);}fitAll();addEventListener('resize',fitAll);
   const GOAL={l:290,r:690,top:115,bot:300};const GW=GOAL.r-GOAL.l,GH=GOAL.bot-GOAL.top;
@@ -749,7 +757,7 @@
   // ===== LOOP =====
   let last=performance.now();
   function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);
-    if(screen==='practice'||screen==='shootout'){draw();drawMeter();}requestAnimationFrame(loop);}
+    if(screen==='practice'||screen==='shootout'){fitCanvas(cv,W,H);fitCanvas(mv,MW,MH);draw();drawMeter();}requestAnimationFrame(loop);}
   function update(dt){
     if(['aimX','aimY','power'].includes(phase)){sweep.val+=sweep.dir*sweep.speed*dt;
       // Power's gauge ceiling is capped by the striker's Power stat; the bounce speed itself (sweep.speed,
@@ -778,7 +786,8 @@
   }
 
   // ===== DRAW =====
-  function draw(){ctx.save();if(shake>0)ctx.translate((Math.random()*2-1)*shake*7,(Math.random()*2-1)*shake*7);
+  function draw(){ctx.setTransform(cv.width/W,0,0,cv.height/H,0,0);   // map logical 980×560 coords onto the HiDPI backing store
+    ctx.save();if(shake>0)ctx.translate((Math.random()*2-1)*shake*7,(Math.random()*2-1)*shake*7);
     drawStadium();drawPitch();drawGoal();
     if(subMode==='defend'){drawAIStriker();drawKeeperFig();if(phase==='d_cue')drawCue();if(aiBall)drawAIBall();}
     else{drawKeeperFig();drawShooter();if(phase==='flight'||phase==='result')drawBallFlight();else drawSpotBall();drawReticle();if(phase==='power')drawPowerGauge();}
@@ -1028,7 +1037,8 @@
   function drawResultText(){ctx.save();ctx.translate(W/2,200);ctx.rotate(-0.05);ctx.font='800 76px Impact, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillStyle='#15110d';ctx.fillText(resText,6,6);ctx.fillStyle='#2b50e2';ctx.fillText(resText,-4,-4);ctx.fillStyle=resCol;ctx.fillText(resText,0,0);ctx.restore();}
 
-  function drawMeter(){mctx.clearRect(0,0,MW,MH);mctx.fillStyle='#15110d';mctx.fillRect(0,0,MW,MH);const{x,y,w,h}=BAR;
+  function drawMeter(){mctx.setTransform(mv.width/MW,0,0,mv.height/MH,0,0);
+    mctx.clearRect(0,0,MW,MH);mctx.fillStyle='#15110d';mctx.fillRect(0,0,MW,MH);const{x,y,w,h}=BAR;
     if(subMode==='defend'){
       if(phase==='d_cue'){centerMsg('REACT!  dive where the gloves flash','#ffc42e');return;}
       if(phase==='d_flight'){centerMsg('…','#f4f1e6');return;}
