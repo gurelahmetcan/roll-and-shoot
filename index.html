@@ -8,12 +8,14 @@
   :root{--ink:#15110d;--paper:#f0e9d6;--pink:#ff2e63;--blue:#2b50e2;--yellow:#ffc42e;--green:#3e9b4f;--net:#f4f1e6;}
   *{box-sizing:border-box;}html,body{margin:0;padding:0;}
   body{background:var(--ink);background-image:radial-gradient(var(--ink) 1px,transparent 1.4px);background-size:6px 6px;
-    color:var(--paper);font-family:"Helvetica Neue",Arial,sans-serif;min-height:100vh;display:flex;justify-content:center;padding:18px 14px 50px;}
-  .wrap{width:100%;max-width:1000px;}
+    color:var(--paper);font-family:"Helvetica Neue",Arial,sans-serif;min-height:100vh;padding:18px 14px 50px;}
+  .wrap{width:100%;max-width:1300px;margin:0 auto;overflow-x:hidden;}
   header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
   .logo{font-family:Impact,"Haettenschweiler","Arial Narrow Bold",sans-serif;font-size:clamp(28px,6vw,50px);line-height:.86;
-    letter-spacing:.5px;text-transform:uppercase;text-shadow:3px 3px 0 var(--pink),6px 6px 0 var(--blue);transform:skewX(-5deg);}
-  .logo small{display:block;font-size:.28em;letter-spacing:3px;text-shadow:none;color:var(--yellow);transform:skewX(5deg);margin-top:15px;}
+    letter-spacing:.5px;text-transform:uppercase;transform:skewX(-5deg);transform-origin:left;}
+  .logo .s7{color:var(--yellow);text-shadow:3px 3px 0 var(--pink),6px 6px 0 var(--blue);margin-right:5px;}
+  .logo .s0{color:var(--paper);text-shadow:3px 3px 0 var(--pink),6px 6px var(--blue);}
+  .logo small{display:block;font-size:.28em;letter-spacing:3px;text-shadow:none;color:var(--paper);transform:skewX(5deg);margin-top:15px; margin-left: 5px;}
   .scorebox{font-family:Impact,sans-serif;text-transform:uppercase;background:var(--paper);color:var(--ink);border:3px solid var(--ink);
     box-shadow:5px 5px 0 var(--pink);padding:8px 14px;text-align:center;transform:skewX(-5deg);}
   .scorebox b{display:block;font-size:28px;line-height:1;transform:skewX(5deg);}
@@ -29,7 +31,8 @@
   .prog{font-family:Impact,sans-serif;font-size:16px;background:var(--ink);color:var(--paper);padding:4px 10px;letter-spacing:1px;}
   .rollWrap{text-align:center;padding:6px 0 4px;}
   .bigroll{font-family:Impact,sans-serif;text-transform:uppercase;letter-spacing:2px;border:4px solid var(--ink);background:var(--pink);
-    color:var(--paper);padding:16px 30px;cursor:pointer;font-size:26px;box-shadow:6px 6px 0 var(--ink);}
+    color:var(--paper);padding:16px 30px;cursor:pointer;font-size:26px;box-shadow:6px 6px 0 var(--ink);transition:transform .06s;}
+  .bigroll:hover:not(:disabled){transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--yellow);}
   .bigroll:disabled{opacity:.5;cursor:default;}
   .reveal{margin:14px auto 0;max-width:660px;}
   .squadhead{display:flex;align-items:center;gap:14px;justify-content:center;margin-bottom:14px;}
@@ -57,7 +60,8 @@
   .slot.gk{margin-top:8px;border-color:var(--blue);}
   .slot.gk .si{color:var(--blue);}
   .startbtn{display:block;width:100%;margin-top:18px;font-family:Impact,sans-serif;text-transform:uppercase;letter-spacing:2px;
-    border:4px solid var(--ink);background:var(--green);color:var(--paper);padding:16px;cursor:pointer;font-size:24px;box-shadow:6px 6px 0 var(--ink);}
+    border:4px solid var(--ink);background:var(--pink);color:var(--paper);padding:16px;cursor:pointer;font-size:24px;box-shadow:6px 6px 0 var(--ink);transition:transform .06s;}
+  .startbtn:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--yellow);}
   .stage{position:relative;}
   #game{display:block;width:100%;height:auto;border:4px solid var(--ink);border-bottom:none;background:var(--green);cursor:pointer;touch-action:manipulation;}
   #meter{display:block;width:100%;height:auto;border:4px solid var(--ink);background:var(--ink);cursor:pointer;touch-action:manipulation;box-shadow:8px 8px 0 var(--blue);}
@@ -108,18 +112,20 @@
   #tourHead h2{font-family:Impact,sans-serif;text-transform:uppercase;letter-spacing:1px;margin:0;font-size:24px;}
   .roundpill{font-family:Impact,sans-serif;font-size:15px;background:var(--ink);color:var(--paper);padding:5px 12px;letter-spacing:1px;}
   .gtable{width:100%;border-collapse:collapse;margin:6px 0 16px;}
-  .gtable th{font-size:10px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:6px 4px;border-bottom:3px solid var(--ink);opacity:.6;}
+  .gtable th{font-family:Impact,sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;text-align:center;padding:6px 4px;border-bottom:3px solid var(--ink);opacity:.45;font-weight:normal;}
   .gtable th:first-child{text-align:left;}
   .gtable td{padding:9px 4px;text-align:center;font-family:Impact,sans-serif;font-size:16px;border-bottom:2px solid rgba(0,0,0,.12);}
   .gtable td:first-child{text-align:left;}
   .gtable tr.you{background:#fff0c2;}
   .gtable tr.adv td{border-bottom:2px solid var(--green);}
+  .gtable tbody tr:last-child td{border-bottom:none;}
   .gteam{display:flex;align-items:center;gap:9px;}
+  .grank{font-family:Impact,sans-serif;font-size:13px;opacity:.45;width:14px;text-align:right;}
   .gteam .flag{width:28px;height:28px;}
   .gteam .nm{font-size:15px;line-height:1;}
   .gteam .yr{font-size:12px;color:var(--pink);margin-left:2px;}
   .gteam .qual{font-size:9px;background:var(--green);color:var(--paper);padding:2px 5px;letter-spacing:1px;margin-left:4px;}
-  .fixtures{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .fixtures{display:flex;flex-direction:column;gap:8px;margin:0 auto 16px;max-width:400px;}
   .fix{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;border:3px solid var(--ink);background:#fff;padding:10px 12px;box-shadow:3px 3px 0 var(--ink);}
   .fix .side{display:flex;align-items:center;gap:8px;}
   .fix .side.r{justify-content:flex-end;}
@@ -132,16 +138,22 @@
   .fix .play{font-family:Impact,sans-serif;text-transform:uppercase;letter-spacing:1px;border:none;background:var(--pink);color:var(--paper);padding:6px 12px;cursor:pointer;font-size:13px;}
   .fix .res{font-family:Impact,sans-serif;font-size:13px;letter-spacing:1px;}
   .fix .res.w{color:var(--green);}.fix .res.l{color:var(--pink);}
-  .match-lbl{font-family:Impact,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:.45;margin:14px 0 5px;padding-left:2px;}
+  .match-lbl{font-family:Impact,sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;opacity:.45;margin:14px 0 5px;padding-left:2px;}
   .fix.next{border-color:var(--yellow);box-shadow:4px 4px 0 var(--yellow);}
-  .tourbtn{display:block;width:100%;margin-top:6px;font-family:Impact,sans-serif;text-transform:uppercase;letter-spacing:2px;
-    border:4px solid var(--ink);background:var(--green);color:var(--paper);padding:15px;cursor:pointer;font-size:22px;box-shadow:6px 6px 0 var(--ink);}
-  .tourbtn.pink{background:var(--pink);}
+  .tourbtn{display:block;width:100%;max-width:400px;margin:6px auto 0;font-family:Impact,sans-serif;text-transform:uppercase;letter-spacing:2px;
+    border:4px solid var(--ink);background:var(--pink);color:var(--paper);padding:15px;cursor:pointer;font-size:22px;box-shadow:6px 6px 0 var(--ink);transition:transform .06s;}
+  .tourbtn:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--yellow);}
   /* bracket */
-  .bracket{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;align-items:center;}
+  .bracket{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 14px;align-items:center;justify-content:safe center;}
   .bcol{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:128px;flex:0 0 auto;}
   .bcol.center{justify-content:center;align-items:center;min-width:128px;}
   .bracket-trophy{width:72px;height:auto;margin:14px 0;filter:drop-shadow(3px 3px 0 var(--ink));}
+  .h1-icon{
+    height: 1em;
+    width: auto;
+    vertical-align: -0.1em;
+    margin-left: 8px;
+  }
 
   /* debug panel */
   #debugToggle{position:fixed;right:14px;bottom:14px;z-index:999;width:42px;height:42px;border-radius:50%;
@@ -194,11 +206,11 @@
   @media(max-width:760px){.home-hero{grid-template-columns:1fr;}}
   .home-score{font-family:Impact,"Haettenschweiler",sans-serif;font-size:clamp(56px,11vw,90px);line-height:1;letter-spacing:1px;
     text-transform:uppercase;text-align:center;transform:skewX(-5deg);margin-bottom:10px;}
-  .home-score span{display:block;}
-  .home-score .s7{color:var(--yellow);text-shadow:5px 5px 0 var(--pink),10px 10px 0 var(--blue);}
-  .home-score .s0{color:var(--paper);text-shadow:5px 5px 0 var(--blue);}
-  .home-tag{display:block;text-align:center;font-family:Impact,sans-serif;letter-spacing:4px;font-size:13px;color:var(--green);
-    text-transform:uppercase;margin-top:14px;}
+  .home-score span{display:inline-block;}
+  .home-score .s7{color:var(--yellow);text-shadow:5px 5px 0 var(--pink),10px 10px 0 var(--blue);margin-right:8px;}
+  .home-score .s0{color:var(--paper);text-shadow:5px 5px 0 var(--pink),10px 10px 0 var(--blue);}
+  .home-tag{display:block;text-align:center;font-family:Impact,sans-serif;letter-spacing:4px;font-size:13px;color:var(--white);
+    text-transform:uppercase;margin-top:14px}
   .home-copy h1{font-family:Impact,sans-serif;text-transform:uppercase;font-size:clamp(34px,6vw,56px);line-height:.92;margin:0 0 16px;
     letter-spacing:1px;transform:skewX(-4deg);}
   .home-copy h1 .hl{color:var(--yellow);}
@@ -231,12 +243,12 @@
   <div id="homeScreen">
     <div class="home-hero">
       <div>
-        <div class="home-score"><span class="s7">ROLL</span><span class="s0">&amp;</span><span class="s0">SHOOT</span></div>
+        <div class="home-score"><span class="s7">ROLL</span><span class="s0">5</span></div>
         <span class="home-tag">Build · Match · Win</span>
       </div>
       <div class="home-copy">
-        <h1>Roll the team.<br>Build your <span class="hl">dream</span> squad</h1>
-        <p>Roll real World Cup squads, draft five takers and a keeper, then run the shootout — can your team win the World Cup?</p>
+        <h1>Roll the team.<br>Build your <span class="hl">dream</span> squad<img src="assets/football.png" class="h1-icon" alt=""></h1>
+        <p>Roll real World Cup squads, draft five penalty takers and a keeper, then run the shootout — can your team win the World Cup?</p>
         <button class="home-play" id="homePlay" disabled>LOADING…</button>
       </div>
     </div>
@@ -244,7 +256,7 @@
     <div class="home-steps">
       <div class="home-step"><div class="num">01</div><div><div class="st-t">Roll</div><div class="st-d">Draw real World Cup squads, one roll at a time.</div></div></div>
       <div class="home-step"><div class="num">02</div><div><div class="st-t">Build</div><div class="st-d">Pick five takers and a keeper for your lineup.</div></div></div>
-      <div class="home-step"><div class="num">03</div><div><div class="st-t">Simulate</div><div class="st-d">Play the shootout and lift the World Cup.</div></div></div>
+      <div class="home-step"><div class="num">03</div><div><div class="st-t">Shoot</div><div class="st-d">Play the shootout and lift the World Cup.</div></div></div>
     </div>
 
     <div class="home-stats" id="homeStats">
@@ -255,14 +267,9 @@
   </div>
 
   <header id="appHeader" class="hide">
-    <div class="logo">Roll &amp; Shoot<small>BUILD · SHOOT · WIN</small></div>
+    <div class="logo" id="homeLogo" style="cursor:pointer"><span class="s7">ROLL</span><span class="s0"> 5</span><small>BUILD · MATCH · WIN</small></div>
     <div class="scorebox" id="scorebox" style="display:none"><b id="scored">0</b><span id="scoreLbl">You – Opp</span></div>
   </header>
-
-  <div class="toolbar hide" id="appToolbar">
-    <button class="tbtn on" id="tabBuild">Build a squad</button>
-    <button class="tbtn" id="tabPractice">Practice / tune</button>
-  </div>
 
   <div class="card" id="buildScreen">
     <div class="head"><h2>Draft your squad</h2><span class="prog" id="prog">SHOOTER 1 / 5</span></div>
@@ -299,12 +306,12 @@
     <div class="bigscore" id="sumScore">0 – 0</div>
     <div class="verdict" id="verdict"></div>
     <div class="reslist" id="reslist"></div>
-    <button class="bigroll" id="contBtn" style="background:var(--green)">▶ CONTINUE</button>
+    <button class="bigroll" id="contBtn">▶ CONTINUE</button>
   </div>
 
   <div class="card" id="groupScreen" style="display:none">
-    <div id="groupHead"><h2 id="groupTitle">Group Stage</h2><span class="roundpill">GROUP STAGE</span></div>
-    <table class="gtable"><thead><tr><th>Team</th><th>P</th><th>W</th><th>L</th><th>Pts</th></tr></thead><tbody id="groupTableBody"></tbody></table>
+    <div id="groupHead"><span class="roundpill" id="groupTitle">GROUP STAGE</span></div>
+    <table class="gtable"><thead><tr><th></th><th>P</th><th>W</th><th>L</th><th>Pts</th></tr></thead><tbody id="groupTableBody"></tbody></table>
     <div class="fixtures" id="fixtures"></div>
     <button class="tourbtn hide" id="playGroupBtn">▶ PLAY MATCH</button>
     <button class="tourbtn hide" id="toBracketBtn">▶ ADVANCE TO KNOCKOUTS</button>
@@ -313,8 +320,8 @@
   <div class="card" id="bracketScreen" style="display:none">
     <div id="tourHead"><h2>Knockout Bracket</h2><span class="roundpill" id="bracketPill">ROUND OF 16</span></div>
     <div class="bracket" id="bracketGrid"></div>
-    <button class="tourbtn pink hide" id="playNextBtn">▶ PLAY YOUR MATCH</button>
-    <button class="tourbtn hide" id="simRestBtn" style="background:var(--blue)">▶ SIMULATE TO END</button>
+    <button class="tourbtn hide" id="playNextBtn">▶ PLAY YOUR MATCH</button>
+    <button class="tourbtn hide" id="simRestBtn">▶ SIMULATE TO END</button>
   </div>
 
   <div class="card" id="champScreen" style="display:none">
@@ -353,6 +360,7 @@
 <div id="debugPanel" class="hide">
   <div class="debughead">DEBUG JUMP</div>
   <button class="dbtn" data-go="build">Build Squad</button>
+  <button class="dbtn" data-go="practice">Practice / Tune</button>
   <button class="dbtn" data-go="group">Group Stage</button>
   <button class="dbtn" data-go="r16">Round of 16</button>
   <button class="dbtn" data-go="qf">Quarter-Finals</button>
@@ -631,7 +639,7 @@
     return {x:Math.max(-1,Math.min(1,(px-MW/2)/BALL_R)),
             y:Math.max(-1,Math.min(1,(py-MH/2)/BALL_R))};
   }
-  function launchAttack(){phase='flight';sfxKick();
+  function launchAttack(){phase='flight';sfxBallKick();
     const ok=oppKeeper||{rating:7};
     // keeper guesses near your AIM ~40% of the time, else a random spot (size = the only skill stat)
     let kgx,kgy;
@@ -679,7 +687,7 @@
     return{tx,ty};
   }
   function launchAIShot(){const tt=goalPt(aiShot.tx,Math.max(0.02,Math.min(1.12,aiShot.ty)));
-    aiBall={t:0,dur:0.6,fromX:SPOT.x,fromY:SPOT.y,toX:tt.x,toY:tt.y,pace:0.85};phase='d_flight';sfxKick();}
+    aiBall={t:0,dur:0.6,fromX:SPOT.x,fromY:SPOT.y,toX:tt.x,toY:tt.y,pace:0.85};phase='d_flight';sfxBallKick();}
   function setDive(evt){
     if(ac().state==='suspended')ac().resume();
     const rect=cv.getBoundingClientRect();
@@ -752,10 +760,15 @@
     drawNet();ctx.restore();
     if(phase==='result'||phase==='d_result')drawResultText();
     if(flash>0){ctx.fillStyle=`rgba(255,196,46,${flash*0.5})`;ctx.fillRect(0,0,W,H);}}
-  function drawStadium(){ctx.fillStyle='#241c2e';ctx.fillRect(0,0,W,108);
-    for(let y=12;y<100;y+=18)for(let x=10;x<W;x+=16){ctx.fillStyle=(x+y)%3?'rgba(255,255,255,.05)':'rgba(255,46,99,.10)';ctx.fillRect(x,y,9,8);}
-    ctx.fillStyle='#15110d';ctx.fillRect(0,100,W,10);}
-  function drawPitch(){for(let i=0;i<12;i++){const y0=110+i*(H-110)/12,y1=110+(i+1)*(H-110)/12;ctx.fillStyle=i%2?'#3b9249':'#43a352';ctx.fillRect(0,y0,W,y1-y0);}
+  const PITCH_TOP=70;   // green starts here; goal (top=115) now sits clearly ON the grass, not against the crowd
+  function drawStadium(){
+    // crowd band (kept up at the very top so the goal detaches from it)
+    ctx.fillStyle='#241c2e';ctx.fillRect(0,0,W,44);
+    for(let y=8;y<40;y+=13)for(let x=10;x<W;x+=16){ctx.fillStyle=(x+y)%3?'rgba(255,255,255,.05)':'rgba(255,46,99,.10)';ctx.fillRect(x,y,9,6);}
+    // barrier wall between crowd and pitch (concrete + dark ad-board line)
+    ctx.fillStyle='#3a3550';ctx.fillRect(0,44,W,PITCH_TOP-44);
+    ctx.fillStyle='#15110d';ctx.fillRect(0,PITCH_TOP-4,W,4);}
+  function drawPitch(){for(let i=0;i<12;i++){const y0=PITCH_TOP+i*(H-PITCH_TOP)/12,y1=PITCH_TOP+(i+1)*(H-PITCH_TOP)/12;ctx.fillStyle=i%2?'#3b9249':'#43a352';ctx.fillRect(0,y0,W,y1-y0);}
     // penalty box drawn as a light trapezoid (narrower far edge, wider near edge) for a subtle downfield perspective
     const bTop=330,bBot=510,bxL=170,bxR=W-170,inset=22;
     ctx.strokeStyle='rgba(244,241,230,.85)';ctx.lineWidth=4;
@@ -763,42 +776,47 @@
     ctx.beginPath();ctx.arc(490,510,64,Math.PI,0);ctx.stroke();
     ctx.fillStyle='rgba(244,241,230,.9)';ctx.beginPath();ctx.arc(SPOT.x,SPOT.y-4,5,0,7);ctx.fill();}
   function drawGoal(){const{l,r,top,bot}=GOAL;
-    // The net is a real receding box: a back edge that's higher up AND narrower than the
-    // goal mouth (not just a horizontal shear), so it reads as depth rather than a tilted flat mesh.
-    const depth=44,inset=32;                      // how far back + how much the far edge narrows
-    const backY=top-depth,backL=l+inset,backR=r-inset;
-    const atX=(x,e)=>lerp(x,lerp(backL,backR,(x-l)/(r-l)),e);   // x at recession fraction e (0=front,1=back)
-    const atY=e=>lerp(bot,backY,e);
-    // side walls — subtle dark wedges so the box's sides are visible, like looking slightly into it
-    const sideGrad=(x0,x1)=>{const g=ctx.createLinearGradient(x0,0,x1,0);g.addColorStop(0,'rgba(0,0,0,.32)');g.addColorStop(1,'rgba(0,0,0,.04)');return g;};
-    ctx.fillStyle=sideGrad(l,backL);
-    ctx.beginPath();ctx.moveTo(l,bot);ctx.lineTo(l,top);ctx.lineTo(backL,backY);ctx.lineTo(backL,bot);ctx.closePath();ctx.fill();
-    ctx.fillStyle=sideGrad(r,backR);
-    ctx.beginPath();ctx.moveTo(r,bot);ctx.lineTo(r,top);ctx.lineTo(backR,backY);ctx.lineTo(backR,bot);ctx.closePath();ctx.fill();
-    // back-wall shadow — darkest right at the receded back edge, fading toward the mouth
-    const backShade=ctx.createLinearGradient(0,backY,0,bot);
-    backShade.addColorStop(0,'rgba(0,0,0,.30)');backShade.addColorStop(0.5,'rgba(0,0,0,.08)');backShade.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=backShade;
-    ctx.beginPath();ctx.moveTo(backL,backY);ctx.lineTo(backR,backY);ctx.lineTo(r,bot);ctx.lineTo(l,bot);ctx.closePath();ctx.fill();
-    // mesh — verticals run from the full-width front (ground) to the narrower, higher back edge
-    ctx.strokeStyle='rgba(244,241,230,.32)';ctx.lineWidth=1;
-    for(let x=l;x<=r;x+=14){ctx.beginPath();ctx.moveTo(atX(x,1),backY);ctx.lineTo(x,bot);ctx.stroke();}
-    for(let e=0;e<=1.001;e+=1/Math.round((bot-backY)/14)){
-      const y=atY(e);ctx.beginPath();ctx.moveTo(atX(l,e),y);ctx.lineTo(atX(r,e),y);ctx.stroke();
-    }
-    // roof rails — the two outermost strands drawn bolder, reading as the net's structural top edges
-    ctx.strokeStyle='rgba(244,241,230,.6)';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(l,top);ctx.lineTo(backL,backY);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(r,top);ctx.lineTo(backR,backY);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(backL,backY);ctx.lineTo(backR,backY);ctx.stroke();
-    // posts + crossbar drawn with a light bevel (dark outer edge, pale inner edge) to fake a rounded 3D post
-    const postW=12;
-    const bevel=(x,y,w,h,horiz)=>{const g=horiz?ctx.createLinearGradient(x,y,x,y+h):ctx.createLinearGradient(x,y,x+w,y);
-      g.addColorStop(0,'#0a0806');g.addColorStop(.45,'#2a2118');g.addColorStop(.55,'#332619');g.addColorStop(1,'#0a0806');
-      ctx.fillStyle=g;ctx.fillRect(x,y,w,h);};
-    bevel(l-postW,top-postW,postW,bot-top+postW,false);
-    bevel(r,top-postW,postW,bot-top+postW,false);
-    bevel(l-postW,top-postW,r-l+postW*2,postW,true);}
+    // ---- geometry ----
+    // top/bot = front crossbar height / ground goal line (the FRONT frame).
+    // backY   = where the net's TOP edge starts — higher than the crossbar, sitting back in perspective.
+    // netBot  = net's bottom, set back from the goal line so a strip of grass shows in front.
+    const depth=40,backY=top-depth,barW=8;
+    const floorGap=40,netBot=bot-floorGap;
+    const backOut=14,backL=l-backOut,backR=r+backOut;   // back frame sits a touch wider, set behind
+    const barCol='#eef0ea',barShade='#b9c2b4';
+    const bar=(x0,y0,x1,y1,w=barW,col=barCol,sh=barShade)=>{ // capsule bar between two points, any angle
+      ctx.strokeStyle=sh;ctx.lineWidth=w+3;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+      ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();};
+
+    // (4) BACK FRAME — thinner, lighter posts set behind, plus corner struts joining to the front
+    // frame. Drawn first so the net and the bold front frame sit in front of it.
+    const bCol='#cdd2c9',bSh='#9aa295',bW=4;
+    bar(l,top,backL,backY,bW,bCol,bSh);          // left corner strut (front-top → back-top)
+    bar(r,top,backR,backY,bW,bCol,bSh);          // right corner strut
+    bar(backL,backY,backR,backY,bW,bCol,bSh);    // back top rail
+    bar(backL,backY,backL,netBot,bW,bCol,bSh);   // back-left post
+    bar(backR,backY,backR,netBot,bW,bCol,bSh);   // back-right post
+
+    // (2) NET — plain straight grid, full width, hanging from the back start-line (backY) down to netBot.
+    ctx.strokeStyle='rgba(20,30,20,.28)';ctx.lineWidth=1;
+    for(let x=l;x<=r;x+=14){ctx.beginPath();ctx.moveTo(x,backY);ctx.lineTo(x,netBot);ctx.stroke();}
+    for(let y=backY;y<=netBot;y+=14){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
+
+    // (1a) BACK net-start line — soft gray line marking the top of the net, up behind the crossbar.
+    ctx.strokeStyle='rgba(185,194,180,.7)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(l,backY);ctx.lineTo(r,backY);ctx.stroke();
+
+    // (1b) FRONT frame — side posts + crossbar, drawn on top of the net.
+    bar(l,top,l,bot);
+    bar(r,top,r,bot);
+    bar(l,top,r,top);
+
+    // net floor seam (soft) + bold ground goal line in front of the grass strip
+    ctx.strokeStyle='rgba(210,215,205,.5)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(l,netBot);ctx.lineTo(r,netBot);ctx.stroke();
+    ctx.strokeStyle='rgba(244,241,230,.85)';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(l,bot);ctx.lineTo(r,bot);ctx.stroke();}
   // chunky big-eyed character (feet at x,y)
   function drawBlocky(x,y,o){const sc=o.scale||1;ctx.save();ctx.translate(x,y);ctx.scale(sc,sc);ctx.rotate(o.lean||0);
     const ink='#15110d',a=o.arm||0,j=o.jersey,j2=o.jersey2||o.jersey;
@@ -976,7 +994,21 @@
   const sfxKick=()=>{tone(150,.12,'square',.25,60);noise(.08,.18,1400);};
   const sfxGoal=()=>{tone(523,.5,'sawtooth',.16,784);noise(.6,.22,1200);setTimeout(()=>tone(659,.4,'triangle',.14),90);};
   const sfxSave=()=>{tone(90,.18,'square',.28,50);noise(.12,.2,500);};
-  const sfxMiss=()=>{tone(330,.25,'sine',.16,120);};
+
+  // ---- recorded SFX (mp3s in /sfx) ----
+  function playSfx(src,{volume=1,loop=false}={}){
+    const a=new Audio(src);a.volume=volume;a.loop=loop;a.play().catch(()=>{});return a;
+  }
+  const sfxBallKick=()=>playSfx('sfx/ball_kick.mp3',{volume:.7});
+  const sfxMiss=()=>playSfx('sfx/penalty_miss.mp3',{volume:.7});
+
+  // stadium ambience — one persistent looping instance, started/stopped as the shootout screen opens/closes
+  let ambientAudio=null;
+  function startAmbient(){
+    if(!ambientAudio){ambientAudio=new Audio('sfx/stadium_ambient.mp3');ambientAudio.loop=true;ambientAudio.volume=.35;}
+    ambientAudio.play().catch(()=>{});
+  }
+  function stopAmbient(){if(ambientAudio)ambientAudio.pause();}
 
   // ===== INPUT =====
   cv.addEventListener('pointerdown',e=>{e.preventDefault();if(ac().state==='suspended')ac().resume();
@@ -1008,10 +1040,9 @@
     SCR.bracket.style.display=(s==='bracket')?'block':'none';
     SCR.champion.style.display=(s==='champion')?'block':'none';
     SCR.eliminated.style.display=(s==='eliminated')?'block':'none';
-    el('tabBuild').classList.toggle('on',s!=='practice');el('tabPractice').classList.toggle('on',s==='practice');
-    el('scorebox').style.display=(s==='shootout')?'block':'none';
+    el('scorebox').style.display='none';
     if(s==='practice'){subMode='attack';pressure=pressureChosen;phase='idle';el('scoreLbl').textContent='Goals';el('scorebox').style.display='block';el('scored').textContent=pracGoals;}
-    if(s==='shootout'){pressure=false;el('scoreLbl').textContent='You – Opp';}
+    if(s==='shootout'){pressure=false;startAmbient()}
     if(s==='build'){pressure=false;}
   }
   function updateScorebox(){el('scored').textContent=screen==='shootout'?(yourScore+' – '+oppScore):pracGoals;}
@@ -1199,8 +1230,7 @@
   // ===== GROUP RENDER =====
   function renderGroup(){
     const t=tournament;
-    el('groupTitle').textContent='Group '+t.letter;
-    document.querySelectorAll('#groupScreen .roundpill')[0].textContent='GROUP '+t.letter;
+    el('groupTitle').textContent='GROUP '+t.letter;
     // ── table ──
     const rows=t.group.map((g,i)=>({...g,i})).sort((a,b)=>b.Pts-a.Pts||b.gf-a.gf||(a.team.code<b.team.code?-1:1));
     const tb=el('groupTableBody');tb.innerHTML='';
@@ -1208,8 +1238,8 @@
       const adv=rank<2; const tr=document.createElement('tr');
       tr.className=(g.you?'you ':'')+(adv?'adv':'');
       const tm=g.team;
-      tr.innerHTML=`<td><div class="gteam"><span class="flag" style="${flagStyle(tm.code,tm.col)}"></span>
-        <span class="nm">${tm.code}</span><span class="yr">'${String(tm.year).slice(2)}</span>
+      tr.innerHTML=`<td><div class="gteam"><span class="grank">${rank+1}</span><span class="flag" style="${flagStyle(tm.code,tm.col)}"></span>
+        <span class="nm">${tm.code}</span><span class="yr">'${g.you?'26':String(tm.year).slice(2)}</span>
         ${adv?'<span class="qual">Q</span>':''}</div></td>
         <td>${g.P}</td><td>${g.W}</td><td>${g.L}</td><td>${g.Pts}</td>`;
       tb.appendChild(tr);
@@ -1218,14 +1248,15 @@
     // ── fixtures area ──
     const fx=el('fixtures');fx.innerHTML='';
     const gT=i=>t.group[i].team;
+    const yrLabel=(idx,year)=>idx===0?'26':String(year).slice(2);
     const nextFix=t.yourFix.find(f=>!f.played);
     const matchNum=(nextFix?t.yourFix.indexOf(nextFix):3)+1;
-    function fixRow(a,b,mid,extraCls){
+    function fixRow(a,b,aIdx,bIdx,mid,extraCls){
       const d=document.createElement('div');d.className='fix '+extraCls;
       d.innerHTML=`<div class="side"><span class="flag" style="${flagStyle(a.code,a.col)}"></span>
-          <div><div class="nm">${a.code} <span class="yr">'${String(a.year).slice(2)}</span></div></div></div>
+          <div><div class="nm">${a.code} <span class="yr">'${yrLabel(aIdx,a.year)}</span></div></div></div>
         <div class="mid">${mid}</div>
-        <div class="side r"><div style="text-align:right"><div class="nm">${b.code} <span class="yr">'${String(b.year).slice(2)}</span></div></div>
+        <div class="side r"><div style="text-align:right"><div class="nm">${b.code} <span class="yr">'${yrLabel(bIdx,b.year)}</span></div></div>
           <span class="flag" style="${flagStyle(b.code,b.col)}"></span></div>`;
       return d;
     }
@@ -1234,24 +1265,8 @@
       const lbl=document.createElement('div');lbl.className='match-lbl';
       lbl.textContent=`Match ${matchNum} of 3 — Your Next Game`;fx.appendChild(lbl);
       const a=gT(nextFix.a),b=gT(nextFix.b);
-      fx.appendChild(fixRow(a,b,`<span style="opacity:.35;font-family:Impact;font-size:13px;letter-spacing:1px">VS</span>`,'yours next'));
+      fx.appendChild(fixRow(a,b,nextFix.a,nextFix.b,`<span style="opacity:.35;font-family:Impact;font-size:13px;letter-spacing:1px">VS</span>`,'yours next'));
     }
-    // Completed matchday results — show as pairs (your match + simultaneous other match)
-    t.yourFix.forEach((f,k)=>{
-      if(!f.played) return;
-      const lbl=document.createElement('div');lbl.className='match-lbl';
-      lbl.textContent=`Matchday ${k+1} Results`;fx.appendChild(lbl);
-      // Your result
-      const a=gT(f.a),b=gT(f.b),cls=f.youWon?'w':'l';
-      fx.appendChild(fixRow(a,b,`<span class="res ${cls}">${f.aScore} – ${f.bScore}</span>`,'yours done'));
-      // Paired simultaneous other match
-      const usedT=new Set([f.a,f.b]);
-      const paired=t.otherFix.find(of=>!usedT.has(of.a)&&!usedT.has(of.b));
-      if(paired&&paired.played){
-        const pa=gT(paired.a),pb=gT(paired.b);
-        fx.appendChild(fixRow(pa,pb,`<span class="res">${paired.aScore} – ${paired.bScore}</span>`,'done'));
-      }
-    });
     // ── bottom buttons ──
     const playBtn=el('playGroupBtn');
     show(playBtn,!!nextFix);
@@ -1404,6 +1419,7 @@
 
   function afterYourBracketMatch(youWon){
     const t=tournament; const round=t.stage;
+    stopAmbient();
     if(!youWon){ // eliminated
       finalizeRound(round); // resolve current round for display
       setScreen('bracket'); renderBracket();
@@ -1579,6 +1595,7 @@
   function routeAfterMatch(){
     const t=tournament; const youWon=yourScore>oppScore;
     const ref=t.curMatchRef;
+    stopAmbient();
     if(t.returnTo==='group'){
       const f=t.yourFix[ref.fixIdx]; f.played=true;
       const youIsA=(f.a===0);
@@ -1657,12 +1674,12 @@
     ctx.fillStyle=INK;ctx.fillRect(0,0,W,H);
     ctx.lineWidth=14;ctx.strokeStyle=YELLOW;ctx.strokeRect(28,28,W-56,H-56);
     const M=90;
-    // header — measure ROLL then place &SHOOT flush with a small gap
+    // header — measure ROLL then place 5 flush with a small gap
     ctx.textBaseline='alphabetic';
     ctx.font='italic 700 64px Impact, sans-serif';ctx.fillStyle=YELLOW;ctx.textAlign='left';
     ctx.fillText('ROLL',M,150);
     const rollW=ctx.measureText('ROLL').width;
-    ctx.fillStyle=PAPER;ctx.fillText('&SHOOT',M+rollW,150);
+    ctx.fillStyle=PAPER;ctx.fillText(' 5',M+rollW,150);
     ctx.font='600 30px "Helvetica Neue", Arial, sans-serif';ctx.fillStyle=GREEN;ctx.textAlign='right';
     ctx.fillText('build your own team',W-M,150);
     ctx.strokeStyle=GREEN;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(M,178);ctx.lineTo(W-M,178);ctx.stroke();
@@ -1814,6 +1831,14 @@
   }
   function debugJump(target){
     if(target==='build'){ resetToBuild(); return; }
+    if(target==='practice'){
+      if(screen==='shootout')return;
+      stats.pow=7;stats.tec=7;
+      ['vPow','vTec'].forEach(id=>el(id).textContent='7');
+      ['sPow','sTec'].forEach(id=>el(id).value=7);
+      setScreen('practice');
+      return;
+    }
     if(target==='group'){
       debugEnsureTournament();
       setScreen('group'); renderGroup();
@@ -1856,16 +1881,23 @@
   const bind=(id,key,vid)=>{const s=el(id),v=el(vid);s.addEventListener('input',()=>{stats[key]=+s.value;v.textContent=s.value;if(phase==='power')sweep.speed=meterSpeed(1.05);if(phase==='curve')sweep.speed=meterSpeed(1.15);});};
   bind('sPow','pow','vPow');bind('sTec','tec','vTec');
   el('pressBtn').addEventListener('click',()=>{pressureChosen=!pressureChosen;pressure=pressureChosen;el('pressBtn').textContent='Pressure: '+(pressureChosen?'ON':'Off');el('pressBtn').classList.toggle('on',pressureChosen);});
-  el('tabBuild').onclick=()=>{if(screen==='shootout')return;setScreen('build');};
-  el('tabPractice').onclick=()=>{if(screen==='shootout')return;stats.pow=7;stats.tec=7;['vPow','vTec'].forEach(id=>el(id).textContent='7');['sPow','sTec'].forEach(id=>el(id).value=7);setScreen('practice');};
 
   // ===== HOME / LANDING =====
   function enterGame(){
     el('homeScreen').classList.add('hide');
     el('appHeader').classList.remove('hide');
-    el('appToolbar').classList.remove('hide');
     setScreen('build');
   }
+  function goHome(){
+    if(screen==='shootout')return;
+    resetToBuild();
+    el('appHeader').classList.add('hide');
+    show(SCR.build,false);show(SCR.practice,false);show(SCR.stage,false);show(SCR.strip,false);
+    SCR.summary.style.display='none';SCR.group.style.display='none';SCR.bracket.style.display='none';
+    SCR.champion.style.display='none';SCR.eliminated.style.display='none';
+    el('homeScreen').classList.remove('hide');
+  }
+  el('homeLogo').onclick=goHome;
   function updateHomeStats(){
     const teams=new Set(SQUADS.map(s=>s.code)).size;
     const squads=SQUADS.length;
@@ -1875,7 +1907,7 @@
   el('homePlay').onclick=enterGame;
 
   renderProg();renderDraft();setScreen('build');
-  el('appHeader').classList.add('hide');el('appToolbar').classList.add('hide');SCR.build.classList.add('hide');
+  el('appHeader').classList.add('hide');SCR.build.classList.add('hide');
   requestAnimationFrame(loop);
   el('rollBtn').disabled=true;el('rollBtn').textContent='LOADING PLAYERS…';
   loadSquadsFromCSV().then(()=>{
