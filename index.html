@@ -372,6 +372,11 @@
 
 <script>
 (() => {
+  // debug tools are local-only — never show them on the live site
+  if(!/^(localhost|127\.|192\.168\.|\[::1\])/.test(location.hostname)){
+    document.getElementById('debugToggle').remove();
+    document.getElementById('debugPanel').remove();
+  }
   // ===== DATA: 16 squads, takers + keeper — loaded from players-template.csv at runtime =====
   // Cosmetic kit colors per squad (code+year) — not player data, stays in code.
   const SQUAD_COLORS={
@@ -1960,10 +1965,12 @@
     tournament.stage=target;
     proceedBracket();
   }
-  el('debugToggle').onclick=()=>el('debugPanel').classList.toggle('hide');
-  document.querySelectorAll('#debugPanel .dbtn').forEach(b=>{
-    b.onclick=()=>{ debugJump(b.dataset.go); el('debugPanel').classList.add('hide'); };
-  });
+  if(el('debugToggle')){ // absent on the live site — removed at startup
+    el('debugToggle').onclick=()=>el('debugPanel').classList.toggle('hide');
+    document.querySelectorAll('#debugPanel .dbtn').forEach(b=>{
+      b.onclick=()=>{ debugJump(b.dataset.go); el('debugPanel').classList.add('hide'); };
+    });
+  }
 
   // entry point from build screen
   function startShootout(){ startTournament(); }

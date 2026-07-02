@@ -1,3 +1,8 @@
 .DS_Store
 .idea/
 .claude/
+
+# dev-only files — keep local, never deploy to Pages
+penalty-roll-gdd.md
+collision-sandbox.html
+*.zip
