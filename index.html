@@ -537,6 +537,11 @@
   let screen='build',subMode='attack',phase='idle';
   const shot={aimX:0,aimY:.5,power:.6,curve:0,strikeY:0};const sweep={val:0,dir:1,speed:.9};
   let keeper=mkKeeper();let ball=null,result=null,resText='',resCol='#ffc42e',shake=0,flash=0,resultTimer=0;const nets=[];
+  let woodHit=null;   // 'bar' | 'post' (bounced out) | 'bar-in' | 'post-in' (deflected in) when the frame was hit
+  const KEEPER_DIVE_MIN_CY=KEEPER_REST_Y-58;   // highest the dive centre may rise — a jump, feet stay near the ground
+  // keeper difficulty by tournament stage: guess chance, extra reach padding (px), dive-speed factor
+  const STAGE_K={group:{g:.38,pad:0,spd:1},r16:{g:.46,pad:2,spd:.95},qf:{g:.52,pad:4,spd:.9},sf:{g:.58,pad:7,spd:.84},final:{g:.65,pad:10,spd:.78}};
+  const stageK=()=>STAGE_K[(typeof tournament!=='undefined'&&tournament&&tournament.stage)||'']||{g:.4,pad:0,spd:1};
   function mkKeeper(){return{t:0,committed:false,sx:490,sy:KEEPER_REST_Y,cx:490,cy:KEEPER_REST_Y,r:70,rating:7};}
   // catch radius from keeper stats — kept only for the debug-circle overlay now; real saves use pixel-perfect below
   const KEEPER_R={1:32,2:36,3:38,4:40,5:42,6:44,7:46,8:48,9:50,10:52};
@@ -572,7 +577,8 @@
     let key='kIdle'; if(dx<-6) key='kLeft'; else if(dx>6) key='kRight';
     if(key==='kIdle') return {key,angle:0};
     const isBottom=keeper.cy>(GOAL.top+GOAL.bot)/2;   // diving into the lower half of the goal
-    const angle=isBottom?(key==='kLeft'?-Math.PI/2:Math.PI/2):0;
+    const isTop=!isBottom&&keeper.cy<KEEPER_REST_Y-20; // jumping for a high ball — tilt into a diagonal dive
+    const angle=isBottom?(key==='kLeft'?-Math.PI/2:Math.PI/2):isTop?(key==='kLeft'?-Math.PI/5:Math.PI/5):0;
     return {key,angle};
   }
   // rotate a world point by -angle around kp, so it lands in the same local frame the (unrotated) mask was built from
@@ -586,7 +592,7 @@
     if(!mask||!sprReady(im)) return Math.hypot(px-kp.x,py-kp.y)<=keeper.r+5; // sprite not decoded yet — fall back to circle just in case
     const h=KEEPER_SPRITE_H,w=h*im.naturalWidth/im.naturalHeight;
     const boxX=kp.x-w/2,boxY=kp.y-h*(1-KEEPER_FOOT);
-    const pad=reachPaddingForRating(keeper.rating);
+    const pad=reachPaddingForRating(keeper.rating)+(keeper.padBonus||0);
     for(let i=-1;i<KEEPER_REACH_SAMPLES;i++){
       let sx=i<0?px:px+Math.cos(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
       let sy=i<0?py:py+Math.sin(i/KEEPER_REACH_SAMPLES*Math.PI*2)*pad;
@@ -641,16 +647,17 @@
   }
   function launchAttack(){phase='flight';sfxBallKick();
     const ok=oppKeeper||{rating:7};
-    // keeper guesses near your AIM ~40% of the time, else a random spot (size = the only skill stat)
-    let kgx,kgy;
-    if(Math.random()<0.4){kgx=shot.aimX+(Math.random()*2-1)*0.34;kgy=shot.aimY+(Math.random()*2-1)*0.26;}
+    // keeper guesses near your AIM more often (and tighter) the deeper the tournament goes
+    const sk=stageK();let kgx,kgy;
+    if(Math.random()<sk.g){kgx=shot.aimX+(Math.random()*2-1)*0.34*sk.spd;kgy=shot.aimY+(Math.random()*2-1)*0.26*sk.spd;}
     else{kgx=(Math.random()*2-1)*0.9;kgy=0.12+Math.random()*0.72;}
     kgx=Math.max(-1,Math.min(1,kgx));kgy=Math.max(0.05,Math.min(1,kgy));
     keeper=mkKeeper();keeper.committed=true;keeper.t=0;keeper.r=keeperRadius(ok);keeper.rating=ok.rating||7;
+    keeper.padBonus=sk.pad;keeper.diveDur=KEEPER_DIVE*sk.spd;
     keeper.sx=(GOAL.l+GOAL.r)/2;keeper.sy=KEEPER_REST_Y;   // rests feet-on-line, dives out to the guess
     const kp=goalPt(kgx,kgy);
-    keeper.cx=Math.max(GOAL.l+12,Math.min(GOAL.r-12,kp.x));
-    keeper.cy=Math.max(GOAL.top+12,Math.min(GOAL.bot-12,kp.y));
+    keeper.cx=Math.max(GOAL.l+26,Math.min(GOAL.r-26,kp.x));
+    keeper.cy=Math.max(KEEPER_DIVE_MIN_CY,Math.min(GOAL.bot-12,kp.y));   // grounded: jumps, never flies to the top corner
     // POWER → ball speed, scaled by the striker's Power stat, exactly as before. The gauge cap (powerCapFrac)
     // additionally bounds how high shot.power itself can reach — that's Power's second, independent lever.
     let pace=0.28+shot.power*(0.6+0.07*(stats.pow-1));
@@ -661,16 +668,26 @@
     ball={t:0,dur:0.74/(0.6+pace),tx:shot.aimX,ty,curve:shot.curve,pace,chip};
   }
   function resolveAttack(){
-    const fx=ball.tx+ball.curve,fy=ball.ty;let r;
-    if(Math.abs(fx)>1.0||fy>1.0||fy<-0.05){r='OUT';}
+    const fx=ball.tx+ball.curve,fy=ball.ty,ax=Math.abs(fx);let r;woodHit=null;
+    // woodwork: the outside band clangs away; the inside band clips the frame and usually deflects IN
+    const inBand=v=>v>=0.94&&v<1.0,outBand=v=>v>1.0&&v<=1.09;
+    if(outBand(ax)&&fy>-0.05&&fy<=1.0){r='OUT';woodHit='post';}
+    else if(outBand(fy)&&ax<=1.04){r='OUT';woodHit='bar';}
+    else if(ax>1.0||fy>1.0||fy<-0.05){r='OUT';}
+    else if(inBand(ax)||inBand(fy)){
+      const post=inBand(ax);
+      if(Math.random()<0.75){r='GOAL';woodHit=post?'post-in':'bar-in';}   // unsaveable deflection
+      else{r='OUT';woodHit=post?'post':'bar';}                            // sometimes it comes back out
+    }
     else{const bp=goalPt(Math.max(-1.05,Math.min(1.05,fx)),Math.max(0,Math.min(1.05,fy)));
       const saved=keeperCatches(bp.x,bp.y);
       r=saved?'SAVE':'GOAL';}
     result=r;
-    if(r==='GOAL'){resText='GOAL!';resCol='#ffc42e';flash=1;sfxGoal();ripple(goalPt(Math.max(-1,Math.min(1,fx)),Math.max(.05,fy)));if(screen==='shootout')yourScore++;else pracGoals++;}
+    if(r==='GOAL'){resText=woodHit?(woodHit==='post-in'?'IN OFF THE POST!':'IN OFF THE BAR!'):'GOAL!';resCol='#ffc42e';flash=1;if(woodHit)sfxWoodwork();sfxGoal();ripple(goalPt(Math.max(-1,Math.min(1,fx)),Math.max(.05,fy)));if(screen==='shootout')yourScore++;else pracGoals++;}
     else if(r==='SAVE'){resText='SAVED!';resCol='#ff2e63';sfxSave();}
+    else if(woodHit){resText=woodHit==='bar'?'OFF THE BAR!':'OFF THE POST!';resCol='#f4f1e6';sfxWoodwork();ripple(goalPt(Math.max(-1,Math.min(1,fx)),Math.max(0,Math.min(1,fy))));}
     else{resText='WIDE!';resCol='#f4f1e6';sfxMiss();}
-    if(!reduce)shake=r==='OUT'?.4:1;
+    if(!reduce)shake=r==='OUT'?(woodHit?.8:.4):1;
     if(screen==='shootout'){atkRes.push({n:cur.n,r});updateScorebox();}
     else{pracTaken++;document.getElementById('scored').textContent=pracGoals;}
     phase='result';resultTimer=0;
@@ -697,15 +714,23 @@
     const k=chosenKeeper.keeper;dive={gx,gy};
     const tp=goalPt(gx,Math.max(0.02,Math.min(1.05,gy)));
     keeper=mkKeeper();keeper.committed=true;keeper.t=0;keeper.r=keeperRadius(k);keeper.rating=k.rating||7;
-    keeper.cx=Math.max(GOAL.l+12,Math.min(GOAL.r-12,tp.x));
-    keeper.cy=Math.max(GOAL.top+12,Math.min(GOAL.bot-12,tp.y));
+    keeper.cx=Math.max(GOAL.l+26,Math.min(GOAL.r-26,tp.x));
+    keeper.cy=Math.max(KEEPER_DIVE_MIN_CY,Math.min(GOAL.bot-12,tp.y));
   }
   function onDefendClick(evt){
     if(phase==='d_cue'||phase==='d_flight')setDive(evt);   // react: dive any time, even after the ball is away
   }
   function resolveDefend(){
-    let r;
-    if(aiShot.ty>1.0||Math.abs(aiShot.tx)>1.0){r='MISS';sfxMiss();}
+    let r;const ax=Math.abs(aiShot.tx),ty=aiShot.ty;woodHit=null;
+    const inBand=v=>v>=0.94&&v<1.0,outBand=v=>v>1.0&&v<=1.09;
+    if(outBand(ty)&&ax<=1.04){r='MISS';woodHit='bar';sfxWoodwork();}
+    else if(outBand(ax)&&ty<=1.0){r='MISS';woodHit='post';sfxWoodwork();}
+    else if(ty>1.0||ax>1.0){r='MISS';sfxMiss();}
+    else if(inBand(ax)||inBand(ty)){
+      const post=inBand(ax);
+      if(Math.random()<0.75){r='GOAL';woodHit=post?'post-in':'bar-in';oppScore++;sfxWoodwork();sfxGoal();ripple(goalPt(aiShot.tx,Math.min(1,ty)));}
+      else{r='MISS';woodHit=post?'post':'bar';sfxWoodwork();}
+    }
     else{
       const tp=goalPt(aiShot.tx,aiShot.ty);
       const saved=keeperCatches(tp.x,tp.y);
@@ -713,8 +738,8 @@
     }
     result=r;
     if(r==='SAVE'){resText='SAVED!';resCol='#ffc42e';flash=.6;}
-    else if(r==='GOAL'){resText='GOAL!';resCol='#ff2e63';if(!reduce)shake=1;}
-    else{resText='MISS!';resCol='#f4f1e6';}
+    else if(r==='GOAL'){resText=woodHit?(woodHit==='post-in'?'IN OFF THE POST!':'IN OFF THE BAR!'):'GOAL!';resCol='#ff2e63';if(!reduce)shake=1;}
+    else{resText=woodHit?(woodHit==='bar'?'OFF THE BAR!':'OFF THE POST!'):'MISS!';resCol='#f4f1e6';if(woodHit&&!reduce)shake=.8;}
     defRes.push({n:aiTaker.n,r});updateScorebox();
     phase='d_result';resultTimer=0;
   }
@@ -731,10 +756,10 @@
       // from Technique via meterSpeed) is untouched, so px/ms difficulty stays identical regardless of cap.
       const cap=phase==='power'?powerCapFrac():1;
       if(sweep.val>cap){sweep.val=cap;sweep.dir=-1;}if(sweep.val<0){sweep.val=0;sweep.dir=1;}}
-    if(phase==='flight'){ball.t+=dt/ball.dur;keeper.t=Math.min(1,keeper.t+dt/KEEPER_DIVE);if(ball.t>=1){ball.t=1;resolveAttack();}}
+    if(phase==='flight'){ball.t+=dt/ball.dur;keeper.t=Math.min(1,keeper.t+dt/(keeper.diveDur||KEEPER_DIVE));if(ball.t>=1){ball.t=1;resolveAttack();}}
     if(phase==='d_cue'){
       cueT+=dt;
-      if(keeper.committed) keeper.t=Math.min(1,keeper.t+dt/KEEPER_DIVE);
+      if(keeper.committed) keeper.t=Math.min(1,keeper.t+dt/(keeper.diveDur||KEEPER_DIVE));
       // Calculate a dynamic reaction window based on the tournament stage
       let windowTime = 0.42; // Default fallback (and Practice Mode)
       if (typeof tournament !== 'undefined' && tournament && tournament.stage) {
@@ -746,7 +771,7 @@
       }
       if(cueT >= cueDelay + windowTime) launchAIShot();
     }
-    if(phase==='d_flight'){aiBall.t+=dt/aiBall.dur;keeper.t=Math.min(1,keeper.t+dt/KEEPER_DIVE);if(aiBall.t>=1){aiBall.t=1;resolveDefend();}}
+    if(phase==='d_flight'){aiBall.t+=dt/aiBall.dur;keeper.t=Math.min(1,keeper.t+dt/(keeper.diveDur||KEEPER_DIVE));if(aiBall.t>=1){aiBall.t=1;resolveDefend();}}
     if(phase==='result'||phase==='d_result')resultTimer+=dt;
     if(shake>0)shake=Math.max(0,shake-dt*3);if(flash>0)flash=Math.max(0,flash-dt*2.4);
     for(let i=nets.length-1;i>=0;i--){const n=nets[i];n.x+=n.vx;n.y+=n.vy;n.a-=dt*1.6;if(n.a<=0)nets.splice(i,1);}
@@ -760,61 +785,101 @@
     drawNet();ctx.restore();
     if(phase==='result'||phase==='d_result')drawResultText();
     if(flash>0){ctx.fillStyle=`rgba(255,196,46,${flash*0.5})`;ctx.fillRect(0,0,W,H);}}
-  const PITCH_TOP=70;   // green starts here; goal (top=115) now sits clearly ON the grass, not against the crowd
+  const PITCH_TOP=150;  // stands + ad boards fill the space behind the goal; the net reads against them, not against empty grass
+  // ---- shared ground perspective ----
+  // Same one-point projection the goal uses: everything on the ground converges to (VPX,HORIZON).
+  // depthY maps a distance in front of the goal line to a screen row (goal line Z=0 → y=300,
+  // penalty spot Z=11 → y=SPOT.y). latS is the lateral scale at a row, 1 on the goal line.
+  const HORIZON=72,VPX=490;
+  const Zcam=25.75,Cp=5871.5;
+  const depthY=Z=>HORIZON+Cp/(Zcam-Z);
+  const latS=y=>(y-HORIZON)/(GOAL.bot-HORIZON);
   function drawStadium(){
-    // crowd band (kept up at the very top so the goal detaches from it)
-    ctx.fillStyle='#241c2e';ctx.fillRect(0,0,W,44);
-    for(let y=8;y<40;y+=13)for(let x=10;x<W;x+=16){ctx.fillStyle=(x+y)%3?'rgba(255,255,255,.05)':'rgba(255,46,99,.10)';ctx.fillRect(x,y,9,6);}
-    // barrier wall between crowd and pitch (concrete + dark ad-board line)
-    ctx.fillStyle='#3a3550';ctx.fillRect(0,44,W,PITCH_TOP-44);
-    ctx.fillStyle='#15110d';ctx.fillRect(0,PITCH_TOP-4,W,4);}
-  function drawPitch(){for(let i=0;i<12;i++){const y0=PITCH_TOP+i*(H-PITCH_TOP)/12,y1=PITCH_TOP+(i+1)*(H-PITCH_TOP)/12;ctx.fillStyle=i%2?'#3b9249':'#43a352';ctx.fillRect(0,y0,W,y1-y0);}
-    // penalty box drawn as a light trapezoid (narrower far edge, wider near edge) for a subtle downfield perspective
-    const bTop=330,bBot=510,bxL=170,bxR=W-170,inset=22;
-    ctx.strokeStyle='rgba(244,241,230,.85)';ctx.lineWidth=4;
-    ctx.beginPath();ctx.moveTo(bxL+inset,bTop);ctx.lineTo(bxR-inset,bTop);ctx.lineTo(bxR,bBot);ctx.lineTo(bxL,bBot);ctx.closePath();ctx.stroke();
-    ctx.beginPath();ctx.arc(490,510,64,Math.PI,0);ctx.stroke();
-    ctx.fillStyle='rgba(244,241,230,.9)';ctx.beginPath();ctx.arc(SPOT.x,SPOT.y-4,5,0,7);ctx.fill();}
+    // stands — three crowd tiers climbing away, darker at the back
+    ctx.fillStyle='#1b1524';ctx.fillRect(0,0,W,46);
+    ctx.fillStyle='#241c2e';ctx.fillRect(0,46,W,42);
+    ctx.fillStyle='#2a2138';ctx.fillRect(0,88,W,32);
+    for(let y=4;y<118;y+=8)for(let x=4;x<W;x+=11){
+      const h=(x*7+y*13)%7;
+      ctx.fillStyle=h===0?'rgba(255,46,99,.16)':h===1?'rgba(255,196,46,.13)':'rgba(255,255,255,.07)';
+      ctx.fillRect(x,y,6,4);}
+    // tier rails
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,44,W,3);ctx.fillRect(0,86,W,3);
+    // ad boards right behind the goal, on a dark plinth
+    ctx.fillStyle='#ded7c3';ctx.fillRect(0,122,W,24);
+    const ads=['#ff2e63','#2b50e2','#3e9b4f','#ffc42e'];
+    for(let x=14,i=0;x<W;x+=123,i++){ctx.fillStyle=ads[i%4];ctx.fillRect(x,129,68,10);}
+    ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(0,122,W,2);
+    ctx.fillStyle='#15110d';ctx.fillRect(0,146,W,PITCH_TOP-146);}
+  function drawPitch(){
+    // grass + mow stripes on equal depth intervals, so bands compress toward the horizon
+    ctx.fillStyle='#3b9249';ctx.fillRect(0,PITCH_TOP,W,H-PITCH_TOP);
+    for(let i=0,Z=19.25;Z>-200;Z-=2.75,i++){
+      const yB=Math.min(H,depthY(Z)),yT=Math.max(PITCH_TOP,depthY(Z-2.75));
+      if(yT>=H)continue;
+      if(yB-yT<1.2)break;
+      if(i%2===0){ctx.fillStyle='#43a352';ctx.fillRect(0,yT,W,yB-yT);}}
+    // ---- markings, all anchored to the goal line and converging to the VP ----
+    const line=(x0,y0,x1,y1)=>{ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();};
+    ctx.strokeStyle='rgba(244,241,230,.9)';ctx.lineCap='round';
+    // goal line runs the full width of the pitch
+    ctx.lineWidth=3;line(0,GOAL.bot,W,GOAL.bot);
+    // penalty box — starts on the goal line, wide like the real thing: the side lines run out
+    // of frame and only the front edge crosses the bottom of the view, with the D dipping below it
+    const pbHW=330,pbY=538,pbS=latS(pbY);
+    ctx.lineWidth=3.5;
+    line(VPX-pbHW,GOAL.bot,VPX-pbHW*pbS,pbY);
+    line(VPX+pbHW,GOAL.bot,VPX+pbHW*pbS,pbY);
+    line(0,pbY,W,pbY);
+    // the D — bulges away from the goal, outside the box front edge, foreshortened to an ellipse
+    ctx.beginPath();ctx.ellipse(VPX,pbY,150,42,0,0,Math.PI);ctx.stroke();
+    // penalty spot, foreshortened
+    ctx.fillStyle='rgba(244,241,230,.9)';
+    ctx.beginPath();ctx.ellipse(SPOT.x,SPOT.y-4,7,3,0,0,7);ctx.fill();}
   function drawGoal(){const{l,r,top,bot}=GOAL;
     // ---- geometry ----
-    // top/bot = front crossbar height / ground goal line (the FRONT frame).
-    // backY   = where the net's TOP edge starts — higher than the crossbar, sitting back in perspective.
-    // netBot  = net's bottom, set back from the goal line so a strip of grass shows in front.
-    const depth=40,backY=top-depth,barW=8;
-    const floorGap=40,netBot=bot-floorGap;
-    const backOut=14,backL=l-backOut,backR=r+backOut;   // back frame sits a touch wider, set behind
-    const barCol='#eef0ea',barShade='#b9c2b4';
+    // One-point perspective: the back of the goal is the front rectangle projected
+    // toward a vanishing point on the horizon, so it sits narrower, higher and centered.
+    const T=0.24;                                       // depth (0..1 toward the shared VP)
+    const px=x=>x+(VPX-x)*T,py=y=>y+(HORIZON-y)*T;      // project a front-plane point to the back plane
+    const bl=px(l),br=px(r),bTop=py(top),bBot=py(bot);
+    const barW=8,barCol='#eef0ea',barShade='#b9c2b4';
     const bar=(x0,y0,x1,y1,w=barW,col=barCol,sh=barShade)=>{ // capsule bar between two points, any angle
       ctx.strokeStyle=sh;ctx.lineWidth=w+3;ctx.lineCap='round';
       ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
       ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();};
+    const seg=(x0,y0,x1,y1)=>{ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();};
 
-    // (4) BACK FRAME — thinner, lighter posts set behind, plus corner struts joining to the front
-    // frame. Drawn first so the net and the bold front frame sit in front of it.
+    // BACK FRAME — thinner, lighter, drawn first so the net and bold front frame cover it.
     const bCol='#cdd2c9',bSh='#9aa295',bW=4;
-    bar(l,top,backL,backY,bW,bCol,bSh);          // left corner strut (front-top → back-top)
-    bar(r,top,backR,backY,bW,bCol,bSh);          // right corner strut
-    bar(backL,backY,backR,backY,bW,bCol,bSh);    // back top rail
-    bar(backL,backY,backL,netBot,bW,bCol,bSh);   // back-left post
-    bar(backR,backY,backR,netBot,bW,bCol,bSh);   // back-right post
+    bar(bl,bTop,br,bTop,bW,bCol,bSh);   // back top rail
+    bar(bl,bTop,bl,bBot,bW,bCol,bSh);   // back-left post
+    bar(br,bTop,br,bBot,bW,bCol,bSh);   // back-right post
 
-    // (2) NET — plain straight grid, full width, hanging from the back start-line (backY) down to netBot.
+    // NET — three panels, all receding toward the vanishing point.
     ctx.strokeStyle='rgba(20,30,20,.28)';ctx.lineWidth=1;
-    for(let x=l;x<=r;x+=14){ctx.beginPath();ctx.moveTo(x,backY);ctx.lineTo(x,netBot);ctx.stroke();}
-    for(let y=backY;y<=netBot;y+=14){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
+    // back panel: straight grid on the (smaller) back rectangle
+    const step=14*(1-T);
+    for(let x=bl;x<=br+0.1;x+=step)seg(x,bTop,x,bBot);
+    for(let y=bTop;y<=bBot+0.1;y+=step)seg(bl,y,br,y);
+    // roof panel: crossbar → back top rail, strands converge toward the VP
+    for(let x=l;x<=r+0.1;x+=14)seg(x,top,px(x),bTop);
+    for(const d of[1/3,2/3])seg(l+(bl-l)*d,top+(bTop-top)*d,r+(br-r)*d,top+(bTop-top)*d);
+    // side panels: front posts → back posts
+    for(let y=top;y<=bot+0.1;y+=14){seg(l,y,bl,py(y));seg(r,y,br,py(y));}
+    for(const d of[1/3,2/3]){seg(l+(bl-l)*d,top+(bTop-top)*d,l+(bl-l)*d,bot+(bBot-bot)*d);
+      seg(r+(br-r)*d,top+(bTop-top)*d,r+(br-r)*d,bot+(bBot-bot)*d);}
 
-    // (1a) BACK net-start line — soft gray line marking the top of the net, up behind the crossbar.
-    ctx.strokeStyle='rgba(185,194,180,.7)';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(l,backY);ctx.lineTo(r,backY);ctx.stroke();
+    // GROUND — back ground line + side seams where the net meets the grass
+    ctx.strokeStyle='rgba(210,215,205,.6)';ctx.lineWidth=1.5;
+    seg(bl,bBot,br,bBot);seg(l,bot,bl,bBot);seg(r,bot,br,bBot);
 
-    // (1b) FRONT frame — side posts + crossbar, drawn on top of the net.
+    // FRONT frame — side posts + crossbar, bold, drawn on top of everything.
     bar(l,top,l,bot);
     bar(r,top,r,bot);
     bar(l,top,r,top);
 
-    // net floor seam (soft) + bold ground goal line in front of the grass strip
-    ctx.strokeStyle='rgba(210,215,205,.5)';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(l,netBot);ctx.lineTo(r,netBot);ctx.stroke();
+    // bold ground goal line
     ctx.strokeStyle='rgba(244,241,230,.85)';ctx.lineWidth=3;
     ctx.beginPath();ctx.moveTo(l,bot);ctx.lineTo(r,bot);ctx.stroke();}
   // chunky big-eyed character (feet at x,y)
@@ -864,13 +929,28 @@
   function drawAIStriker(){const kicking=(phase==='d_flight'||phase==='d_result');
     ctx.globalAlpha=kicking?0.92:1;drawSprite(strikerSprite(kicking),SPOT.x-30,SPOT.y+48,150);ctx.globalAlpha=1;
     if(phase==='d_cue')drawBall(SPOT.x,SPOT.y,15);}
-  function drawAIBall(){const e=aiBall.t;const x=lerp(aiBall.fromX,aiBall.toX,e);let y=lerp(aiBall.fromY,aiBall.toY,e);y-=Math.sin(e*Math.PI)*38;
+  function drawAIBall(){const e=aiBall.t;let x=lerp(aiBall.fromX,aiBall.toX,e);let y=lerp(aiBall.fromY,aiBall.toY,e);y-=Math.sin(e*Math.PI)*38;
+    if(phase==='d_result'){
+      if(result==='GOAL'){const t=Math.min(resultTimer,.9);
+        if(woodHit==='post-in')x+=(aiShot.tx<0?1:-1)*Math.min(90*t,60);
+        else if(woodHit==='bar-in')x+=(aiShot.tx>=0?-1:1)*Math.min(20*t,14);
+        y=Math.min(GOAL.bot-12,y+520*t*t);}
+      else if(woodHit){const t=Math.min(resultTimer,.6),dir=woodHit==='post'?(aiShot.tx<0?-1:1):(aiShot.tx>=0?.4:-.4);
+        x+=dir*150*t;y+=-90*t+700*t*t;}}
     const sc=14;ctx.strokeStyle='rgba(244,241,230,.35)';ctx.lineWidth=sc*0.7;
     ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(lerp(x,aiBall.fromX,.08),lerp(y,aiBall.fromY,.06));ctx.stroke();drawBall(x,y,sc);}
   function drawSpotBall(){drawBall(SPOT.x,SPOT.y,15);}
   function drawBallFlight(){const e=ball.t,fx=ball.tx+ball.curve;
     const end=goalPt(fx,Math.max(0.02,Math.min(1.05,ball.ty))),straight=goalPt(ball.tx,Math.max(0.02,Math.min(1.05,ball.ty)));
-    const x=lerp(SPOT.x,lerp(straight.x,end.x,e),e);let y=lerp(SPOT.y,end.y,e);y-=Math.sin(e*Math.PI)*(26+ball.pace*28);
+    let x=lerp(SPOT.x,lerp(straight.x,end.x,e),e);let y=lerp(SPOT.y,end.y,e);y-=Math.sin(e*Math.PI)*(26+ball.pace*28);
+    if(phase==='result'){
+      if(result==='GOAL'){ // ball hits the net (or clips the frame), then gravity brings it down to rest on the ground
+        const t=Math.min(resultTimer,.9);
+        if(woodHit==='post-in')x+=(fx<0?1:-1)*Math.min(90*t,60);   // kink off the inside of the post, into the net
+        else if(woodHit==='bar-in')x+=(fx>=0?-1:1)*Math.min(20*t,14);
+        y=Math.min(GOAL.bot-12,y+520*t*t);}
+      else if(woodHit){const t=Math.min(resultTimer,.6),dir=woodHit==='post'?(fx<0?-1:1):(fx>=0?.4:-.4);
+        x+=dir*150*t;y+=-90*t+700*t*t;}}                           // rebound: kick away, drop under gravity
     const sc=14;ctx.strokeStyle='rgba(244,241,230,.35)';ctx.lineWidth=sc*0.7;
     ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(lerp(x,SPOT.x,.08),lerp(y,SPOT.y,.06));ctx.stroke();drawBall(x,y,sc);}
   function rrect(x,y,w,h,r){ctx.beginPath();if(ctx.roundRect){ctx.roundRect(x,y,w,h,r);}else{ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}}
@@ -993,6 +1073,7 @@
   function noise(d,g=.25,fl=900){const a=ac(),n=a.createBufferSource(),b=a.createBuffer(1,a.sampleRate*d,a.sampleRate);const da=b.getChannelData(0);for(let i=0;i<da.length;i++)da[i]=Math.random()*2-1;n.buffer=b;const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=fl;const gg=a.createGain();gg.gain.setValueAtTime(g,a.currentTime);gg.gain.exponentialRampToValueAtTime(.001,a.currentTime+d);n.connect(f).connect(gg).connect(a.destination);n.start();n.stop(a.currentTime+d);}
   const sfxKick=()=>{tone(150,.12,'square',.25,60);noise(.08,.18,1400);};
   const sfxGoal=()=>{tone(523,.5,'sawtooth',.16,784);noise(.6,.22,1200);setTimeout(()=>tone(659,.4,'triangle',.14),90);};
+  const sfxWoodwork=()=>{tone(160,.14,'square',.2);tone(1500,.08,'square',.1,1050);noise(.06,.12,2600);};
   const sfxSave=()=>{tone(90,.18,'square',.28,50);noise(.12,.2,500);};
 
   // ---- recorded SFX (mp3s in /sfx) ----
